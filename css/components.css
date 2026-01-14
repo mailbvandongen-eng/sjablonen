@@ -3,12 +3,13 @@
 /* Header Component */
 wl-header {
     display: block;
-    background: var(--wl-primary);
-    color: var(--wl-white);
+    background: var(--wl-white);
+    color: var(--wl-gray-900);
     box-shadow: var(--wl-shadow-md);
     position: sticky;
     top: 0;
     z-index: 100;
+    border-bottom: 3px solid var(--wl-primary);
 }
 
 wl-header .header-inner {
@@ -23,26 +24,12 @@ wl-header .header-inner {
 wl-header .logo {
     display: flex;
     align-items: center;
-    gap: var(--wl-spacing-md);
     text-decoration: none;
-    color: var(--wl-white);
 }
 
-wl-header .logo-icon {
-    width: 40px;
-    height: 40px;
-    background: var(--wl-white);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--wl-primary);
-    font-weight: bold;
-}
-
-wl-header .logo-text {
-    font-size: var(--wl-font-size-lg);
-    font-weight: 600;
+wl-header .logo-img {
+    height: 45px;
+    width: auto;
 }
 
 wl-header nav {
@@ -51,16 +38,22 @@ wl-header nav {
 }
 
 wl-header nav a {
-    color: var(--wl-white);
+    color: var(--wl-gray-700);
     text-decoration: none;
     padding: var(--wl-spacing-sm) var(--wl-spacing-md);
     border-radius: var(--wl-border-radius);
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
+    font-weight: 500;
 }
 
-wl-header nav a:hover,
+wl-header nav a:hover {
+    background: var(--wl-gray-100);
+    color: var(--wl-primary);
+}
+
 wl-header nav a.active {
-    background: rgba(255,255,255,0.15);
+    background: var(--wl-primary);
+    color: var(--wl-white);
 }
 
 /* Form Section Component */
@@ -555,4 +548,156 @@ wl-version-history .version-row:first-child {
     font-size: var(--wl-font-size-h3);
     color: var(--wl-gray-700);
     margin-bottom: var(--wl-spacing-sm);
+}
+
+/* Attachments Component */
+wl-attachments {
+    display: block;
+    margin-top: var(--wl-spacing-lg);
+}
+
+.attachments-section {
+    margin-bottom: var(--wl-spacing-lg);
+}
+
+.attachments-section h4 {
+    font-size: var(--wl-font-size-base);
+    color: var(--wl-gray-700);
+    margin-bottom: var(--wl-spacing-sm);
+}
+
+.links-list, .documents-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wl-spacing-sm);
+    margin-bottom: var(--wl-spacing-md);
+}
+
+.link-item {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+    align-items: center;
+}
+
+.link-inputs {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+    flex: 1;
+}
+
+.link-inputs .link-title {
+    width: 30%;
+}
+
+.link-inputs .link-url {
+    flex: 1;
+}
+
+.document-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--wl-spacing-sm) var(--wl-spacing-md);
+    background: var(--wl-gray-50);
+    border-radius: var(--wl-border-radius);
+    border: 1px solid var(--wl-gray-200);
+}
+
+.document-info {
+    display: flex;
+    align-items: center;
+    gap: var(--wl-spacing-sm);
+}
+
+.document-icon {
+    color: var(--wl-primary);
+}
+
+.document-name {
+    font-weight: 500;
+}
+
+.document-size {
+    color: var(--wl-gray-500);
+    font-size: var(--wl-font-size-sm);
+}
+
+.document-actions {
+    display: flex;
+    gap: var(--wl-spacing-xs);
+}
+
+/* Share Modal Enhancements */
+.share-stakeholders {
+    margin-top: var(--wl-spacing-lg);
+    padding-top: var(--wl-spacing-lg);
+    border-top: 1px solid var(--wl-gray-200);
+}
+
+.share-stakeholders h4 {
+    margin-bottom: var(--wl-spacing-md);
+}
+
+.stakeholder-share-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wl-spacing-sm);
+}
+
+.stakeholder-share-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--wl-spacing-sm) var(--wl-spacing-md);
+    background: var(--wl-gray-50);
+    border-radius: var(--wl-border-radius);
+}
+
+.stakeholder-share-item .stakeholder-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stakeholder-share-item .stakeholder-name {
+    font-weight: 500;
+}
+
+.stakeholder-share-item .stakeholder-email {
+    font-size: var(--wl-font-size-sm);
+    color: var(--wl-gray-500);
+}
+
+.stakeholder-share-item .share-buttons {
+    display: flex;
+    gap: var(--wl-spacing-xs);
+}
+
+.btn-email, .btn-teams {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wl-spacing-xs);
+    padding: var(--wl-spacing-xs) var(--wl-spacing-sm);
+    font-size: var(--wl-font-size-sm);
+    border-radius: var(--wl-border-radius);
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-email {
+    background: #0078D4;
+    color: white;
+}
+
+.btn-email:hover {
+    background: #106EBE;
+}
+
+.btn-teams {
+    background: #6264A7;
+    color: white;
+}
+
+.btn-teams:hover {
+    background: #5558A3;
 }

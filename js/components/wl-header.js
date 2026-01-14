@@ -17,8 +17,7 @@ class WLHeader extends HTMLElement {
         this.innerHTML = `
             <div class="header-inner">
                 <a href="#/" class="logo">
-                    <div class="logo-icon">W</div>
-                    <span class="logo-text">Gemeente Westland</span>
+                    <img src="assets/logo-westland.svg" alt="Gemeente Westland" class="logo-img">
                 </a>
                 <nav>
                     <a href="#/" data-route="/">Overzicht</a>

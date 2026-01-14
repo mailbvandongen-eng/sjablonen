@@ -39,10 +39,11 @@ class WLStakeholderTable extends HTMLElement {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 30%">Team / Rol</th>
-                            <th style="width: 35%">Naam</th>
-                            <th style="width: 20%">${statusLabel}</th>
-                            ${this._editable ? '<th style="width: 15%">Acties</th>' : ''}
+                            <th style="width: 20%">Team / Rol</th>
+                            <th style="width: 20%">Naam</th>
+                            <th style="width: 25%">Email</th>
+                            <th style="width: 15%">${statusLabel}</th>
+                            ${this._editable ? '<th style="width: 20%">Acties</th>' : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +89,12 @@ class WLStakeholderTable extends HTMLElement {
                     ${this._editable
                         ? `<input type="text" value="${row.naam || ''}" data-field="naam" placeholder="Naam">`
                         : row.naam || '-'
+                    }
+                </td>
+                <td class="input-cell">
+                    ${this._editable
+                        ? `<input type="email" value="${row.email || ''}" data-field="email" placeholder="email@westland.nl">`
+                        : row.email || '-'
                     }
                 </td>
                 <td class="approval-cell">
@@ -166,6 +173,7 @@ class WLStakeholderTable extends HTMLElement {
         const newRow = {
             team: '',
             naam: '',
+            email: '',
             [statusKey]: null
         };
         this._data.push(newRow);

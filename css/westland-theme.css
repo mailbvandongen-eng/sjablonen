@@ -1,14 +1,14 @@
 /* Gemeente Westland Huisstijl */
 
 :root {
-    /* Primaire kleuren */
-    --wl-primary: #1B4D3E;
-    --wl-primary-light: #2A7D5F;
-    --wl-primary-dark: #0D3328;
+    /* Primaire kleuren - gebaseerd op Gemeente Westland logo */
+    --wl-primary: #44772C;
+    --wl-primary-light: #74B943;
+    --wl-primary-dark: #2D5A1A;
 
-    /* Secundaire kleuren */
-    --wl-secondary: #E67E22;
-    --wl-secondary-light: #F39C12;
+    /* Secundaire kleuren - blauw uit logo */
+    --wl-secondary: #8FB6D9;
+    --wl-secondary-light: #93B8D7;
 
     /* Neutralen */
     --wl-white: #FFFFFF;
@@ -133,9 +133,9 @@ a:hover {
 }
 
 .page-header {
-    background: var(--wl-primary);
+    background: linear-gradient(135deg, var(--wl-primary) 0%, var(--wl-primary-light) 100%);
     color: var(--wl-white);
-    padding: var(--wl-spacing-lg) 0;
+    padding: var(--wl-spacing-xl) 0;
     margin-bottom: var(--wl-spacing-xl);
 }
 
