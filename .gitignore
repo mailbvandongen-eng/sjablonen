@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local settings (keep templates)
+.claude/settings.local.json
+
+# Logs
+*.log
