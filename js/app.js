@@ -486,7 +486,7 @@ function renderIntakeForm(form, isKlantView = false) {
                 ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
                     <div class="stakeholder-picklist-row ${s.geinformeerd ? 'shared' : ''}">
                         <div class="stakeholder-rol">
-                            <strong>${escapeHtml(s.rol)}</strong>
+                            ${escapeHtml(s.rol)}
                             ${s.geinformeerd ? `
                                 <span class="shared-badge" title="Gedeeld">
                                     <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
