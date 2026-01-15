@@ -35,6 +35,7 @@ const router = new Router();
 // App state
 let currentForm = null;
 let autoSaveTimer = null;
+let formModified = false;
 
 /**
  * Render home page
@@ -276,6 +277,7 @@ async function loadForm(formType, formId) {
     }
 
     currentForm = form;
+    formModified = false; // Reset bij laden
     renderForm(form);
     setupAutoSave();
 }
@@ -493,24 +495,34 @@ function renderIntakeForm(form, isKlantView = false) {
                                 </span>
                             ` : ''}
                         </div>
-                        <div class="stakeholder-select">
-                            <select class="form-select" onchange="updateStakeholderPersoon(${idx}, this.value)">
-                                <option value="">-- Selecteer persoon --</option>
-                                ${STAKEHOLDER_PERSONEN.map(p => `
-                                    <option value="${p.id}" ${s.persoonId === p.id ? 'selected' : ''}>${p.naam}</option>
-                                `).join('')}
-                            </select>
-                        </div>
-                        <div class="stakeholder-status">
-                            ${s.persoonId ? `
-                                <label class="checkbox-label">
-                                    <input type="checkbox"
-                                           ${s.geinformeerd ? 'checked' : ''}
-                                           onchange="toggleStakeholder(${idx}, this.checked)">
-                                    Geïnformeerd
-                                </label>
-                            ` : ''}
-                        </div>
+                        ${s.rol === 'Opdrachtgever' ? `
+                            <div class="stakeholder-select">
+                                <input type="text" class="form-input"
+                                       placeholder="Naam opdrachtgever"
+                                       value="${escapeHtml(s.naam || '')}"
+                                       onchange="updateStakeholderNaam(${idx}, this.value)">
+                            </div>
+                            <div class="stakeholder-status"></div>
+                        ` : `
+                            <div class="stakeholder-select">
+                                <select class="form-select" onchange="updateStakeholderPersoon(${idx}, this.value)">
+                                    <option value="">-- Selecteer persoon --</option>
+                                    ${STAKEHOLDER_PERSONEN.map(p => `
+                                        <option value="${p.id}" ${s.persoonId === p.id ? 'selected' : ''}>${p.naam}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="stakeholder-status">
+                                ${s.persoonId ? `
+                                    <label class="checkbox-label">
+                                        <input type="checkbox"
+                                               ${s.geinformeerd ? 'checked' : ''}
+                                               onchange="toggleStakeholder(${idx}, this.checked)">
+                                        Geïnformeerd
+                                    </label>
+                                ` : ''}
+                            </div>
+                        `}
                         ${s.feedback ? `
                             <div class="stakeholder-feedback">
                                 <span class="feedback-date">${formatDate(s.feedbackDatum, true)}</span>
@@ -1025,6 +1037,7 @@ function updateFormValue(path, value) {
     }
 
     obj[parts[parts.length - 1]] = value;
+    formModified = true;
     triggerAutoSave();
 }
 
@@ -1051,6 +1064,8 @@ function setupAutoSave() {
  * Trigger auto-save
  */
 function triggerAutoSave() {
+    if (!formModified) return; // Alleen opslaan als er iets gewijzigd is
+
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {
         saveForm(true);
@@ -1062,8 +1077,10 @@ function triggerAutoSave() {
  */
 async function saveForm(isAutoSave = false) {
     if (!currentForm) return;
+    if (isAutoSave && !formModified) return; // Skip auto-save als niets gewijzigd
 
     await dataService.updateForm(currentForm.id, currentForm);
+    formModified = false; // Reset na opslaan
 
     const now = new Date();
     const lastSavedEl = document.getElementById('last-saved');
@@ -1947,6 +1964,7 @@ window.getSimpleIntakeLink = function() {
 window.updateIM = function(imId) {
     if (!currentForm) return;
     currentForm.informatiemanager = imId;
+    formModified = true;
     triggerAutoSave();
     // Re-render om workflow knoppen te updaten
     renderForm(currentForm);
@@ -1958,6 +1976,7 @@ window.updateIM = function(imId) {
 window.toggleStakeholder = function(idx, checked) {
     if (!currentForm || !currentForm.stakeholders) return;
     currentForm.stakeholders[idx].geinformeerd = checked;
+    formModified = true;
     triggerAutoSave();
 };
 
@@ -1978,8 +1997,19 @@ window.updateStakeholderPersoon = function(idx, persoonId) {
         currentForm.stakeholders[idx].email = '';
         currentForm.stakeholders[idx].geinformeerd = false;
     }
+    formModified = true;
     triggerAutoSave();
     renderForm(currentForm);
+};
+
+/**
+ * Update stakeholder naam (voor Opdrachtgever)
+ */
+window.updateStakeholderNaam = function(idx, naam) {
+    if (!currentForm || !currentForm.stakeholders) return;
+    currentForm.stakeholders[idx].naam = naam;
+    formModified = true;
+    triggerAutoSave();
 };
 
 /**
