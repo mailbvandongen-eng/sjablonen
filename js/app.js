@@ -1792,12 +1792,26 @@ window.deelMetKlant = function() {
 
     saveForm().then(() => {
         const klantUrl = window.location.origin + window.location.pathname + '#/klant-intake/' + currentForm.id + '/' + currentForm.klantToken;
+        const onderwerp = currentForm.basisinfo?.onderwerp || 'Nieuwe aanvraag';
+
+        const emailSubject = encodeURIComponent(`Intake formulier: ${onderwerp}`);
+        const emailBody = encodeURIComponent(`Beste,
+
+Graag wil ik je vragen om het intake formulier in te vullen voor: ${onderwerp}
+
+Klik op onderstaande link om het formulier te openen:
+${klantUrl}
+
+Na het invullen klik je op "Indienen" onderaan het formulier.
+
+Met vriendelijke groet`);
 
         // Toon modal met link
         const modal = document.createElement('div');
         modal.className = 'modal-overlay active';
+        modal.id = 'deel-klant-modal';
         modal.innerHTML = `
-            <div class="modal">
+            <div class="modal" style="max-width: 500px;">
                 <div class="modal-header">
                     <h3>Deel met klant</h3>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
@@ -1807,17 +1821,38 @@ window.deelMetKlant = function() {
                     </button>
                 </div>
                 <div class="modal-body">
-                    <p>De intake is klaar om te delen met de klant. Kopieer onderstaande link en stuur deze naar de aanvrager.</p>
                     <div class="form-field">
-                        <input type="text" class="form-input" value="${klantUrl}" readonly id="klant-link-input">
+                        <label class="form-label">E-mailadres klant</label>
+                        <input type="email" class="form-input" id="klant-email-input" placeholder="naam@organisatie.nl">
                     </div>
-                    <div class="d-flex gap-1 mt-2">
-                        <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${klantUrl}'); showToast('Link gekopieerd!', 'success');">
-                            Kopieer link
+
+                    <div class="share-buttons mt-3">
+                        <button class="btn btn-primary btn-block" id="btn-send-email" onclick="window.sendKlantEmail()">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;">
+                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                            </svg>
+                            Verstuur via e-mail
                         </button>
-                        <a href="mailto:?subject=Intake formulier: ${encodeURIComponent(currentForm.basisinfo?.onderwerp || 'Nieuwe aanvraag')}&body=${encodeURIComponent('Beste,\\n\\nVul alstublieft het intake formulier in via onderstaande link:\\n\\n' + klantUrl + '\\n\\nMet vriendelijke groet')}" class="btn btn-secondary">
-                            Open in email
-                        </a>
+                        <button class="btn btn-secondary btn-block mt-2" onclick="window.sendKlantTeams()">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;">
+                                <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                            </svg>
+                            Open in Teams chat
+                        </button>
+                    </div>
+
+                    <div class="divider mt-3 mb-3">
+                        <span>of kopieer de link</span>
+                    </div>
+
+                    <div class="form-field">
+                        <div class="input-with-button">
+                            <input type="text" class="form-input" value="${klantUrl}" readonly id="klant-link-input">
+                            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${klantUrl}'); showToast('Link gekopieerd!', 'success');">
+                                Kopieer
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1825,8 +1860,59 @@ window.deelMetKlant = function() {
         document.body.appendChild(modal);
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
+        // Focus op email input
+        setTimeout(() => document.getElementById('klant-email-input')?.focus(), 100);
+
+        // Store URL for sharing functions
+        window._klantShareUrl = klantUrl;
+        window._klantShareSubject = `Intake formulier: ${onderwerp}`;
+        window._klantShareBody = `Beste,
+
+Graag wil ik je vragen om het intake formulier in te vullen voor: ${onderwerp}
+
+Klik op onderstaande link om het formulier te openen:
+${klantUrl}
+
+Na het invullen klik je op "Indienen" onderaan het formulier.
+
+Met vriendelijke groet`;
+
         renderForm(currentForm);
     });
+};
+
+window.sendKlantEmail = function() {
+    const email = document.getElementById('klant-email-input')?.value;
+    if (!email) {
+        showToast('Vul een e-mailadres in', 'error');
+        return;
+    }
+
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(window._klantShareSubject)}&body=${encodeURIComponent(window._klantShareBody)}`;
+    window.location.href = mailtoUrl;
+
+    document.getElementById('deel-klant-modal')?.remove();
+    showToast('E-mail wordt geopend...', 'success');
+};
+
+window.sendKlantTeams = function() {
+    const email = document.getElementById('klant-email-input')?.value;
+    const message = encodeURIComponent(window._klantShareBody);
+
+    // Teams deep link voor chat
+    let teamsUrl;
+    if (email) {
+        // Open chat met specifieke persoon
+        teamsUrl = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(email)}&message=${message}`;
+    } else {
+        // Open Teams met message in clipboard
+        navigator.clipboard.writeText(window._klantShareBody);
+        showToast('Bericht gekopieerd! Plak in Teams chat.', 'success');
+        teamsUrl = 'https://teams.microsoft.com/';
+    }
+
+    window.open(teamsUrl, '_blank');
+    document.getElementById('deel-klant-modal')?.remove();
 };
 
 /**

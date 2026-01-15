@@ -993,3 +993,53 @@ wl-attachments {
     background: var(--wl-warning);
     color: var(--wl-gray-900);
 }
+
+/* Share modal styles */
+.btn-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.btn-sm {
+    padding: var(--wl-spacing-xs) var(--wl-spacing-sm);
+    font-size: var(--wl-font-size-sm);
+}
+
+.input-with-button {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+}
+
+.input-with-button .form-input {
+    flex: 1;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--wl-gray-500);
+    font-size: var(--wl-font-size-sm);
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--wl-gray-300);
+}
+
+.divider span {
+    padding: 0 var(--wl-spacing-md);
+}
+
+.share-buttons {
+    display: flex;
+    flex-direction: column;
+}
+
+.share-buttons .btn svg {
+    flex-shrink: 0;
+}
