@@ -13,22 +13,183 @@
 
     <!-- Favicon (placeholder) -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231B4D3E' width='100' height='100' rx='10'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>W</text></svg>">
+
+    <style>
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--wl-primary) 0%, var(--wl-primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #login-screen.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: var(--wl-white);
+            padding: var(--wl-spacing-xl);
+            border-radius: var(--wl-border-radius-lg);
+            box-shadow: var(--wl-shadow-lg);
+            width: 100%;
+            max-width: 400px;
+            margin: var(--wl-spacing-md);
+            text-align: center;
+        }
+
+        .login-box img {
+            height: 60px;
+            margin-bottom: var(--wl-spacing-lg);
+        }
+
+        .login-box h1 {
+            font-size: var(--wl-font-size-h2);
+            color: var(--wl-primary);
+            margin-bottom: var(--wl-spacing-sm);
+        }
+
+        .login-box p {
+            color: var(--wl-gray-500);
+            margin-bottom: var(--wl-spacing-lg);
+        }
+
+        .login-box .form-group {
+            text-align: left;
+        }
+
+        .login-box .form-input {
+            text-align: center;
+            font-size: var(--wl-font-size-lg);
+            letter-spacing: 2px;
+        }
+
+        .login-box .btn {
+            width: 100%;
+            margin-top: var(--wl-spacing-md);
+        }
+
+        .login-error {
+            color: var(--wl-error);
+            font-size: var(--wl-font-size-sm);
+            margin-top: var(--wl-spacing-sm);
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        #main-app {
+            display: none;
+        }
+
+        #main-app.visible {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Ga naar hoofdinhoud</a>
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-box">
+            <img src="assets/logo-westland.svg" alt="Gemeente Westland">
+            <h1>Projectformulieren</h1>
+            <p>Voer het wachtwoord in om door te gaan</p>
+            <form id="login-form" onsubmit="return handleLogin(event)">
+                <div class="form-group">
+                    <input type="password"
+                           id="password-input"
+                           class="form-input"
+                           placeholder="Wachtwoord"
+                           autocomplete="current-password"
+                           autofocus>
+                    <div class="login-error" id="login-error">Onjuist wachtwoord</div>
+                </div>
+                <button type="submit" class="btn btn-primary">Inloggen</button>
+            </form>
+        </div>
+    </div>
 
-    <!-- Header -->
-    <wl-header></wl-header>
+    <!-- Main App (hidden until authenticated) -->
+    <div id="main-app">
+        <a href="#main-content" class="skip-link">Ga naar hoofdinhoud</a>
 
-    <!-- Main Content -->
-    <main id="main-content">
-        <div id="app"></div>
-    </main>
+        <!-- Header -->
+        <wl-header></wl-header>
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toast-container"></div>
+        <!-- Main Content -->
+        <main id="main-content">
+            <div id="app"></div>
+        </main>
 
-    <!-- Scripts -->
+        <!-- Toast Container -->
+        <div class="toast-container" id="toast-container"></div>
+    </div>
+
+    <!-- Auth Script (runs before app) -->
+    <script>
+        // Configuratie - wijzig hier het wachtwoord
+        const SITE_PASSWORD = 'westland2024';
+
+        // Check of al ingelogd
+        function checkAuth() {
+            const isAuthenticated = sessionStorage.getItem('wl_authenticated') === 'true';
+            if (isAuthenticated) {
+                showApp();
+            }
+        }
+
+        // Toon de app
+        function showApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.add('visible');
+        }
+
+        // Handle login
+        function handleLogin(e) {
+            e.preventDefault();
+            const password = document.getElementById('password-input').value;
+            const errorEl = document.getElementById('login-error');
+
+            if (password === SITE_PASSWORD) {
+                sessionStorage.setItem('wl_authenticated', 'true');
+                showApp();
+            } else {
+                errorEl.classList.add('show');
+                document.getElementById('password-input').value = '';
+                document.getElementById('password-input').focus();
+
+                // Shake animation
+                const loginBox = document.querySelector('.login-box');
+                loginBox.style.animation = 'shake 0.5s';
+                setTimeout(() => loginBox.style.animation = '', 500);
+            }
+            return false;
+        }
+
+        // Shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Check auth on load
+        checkAuth();
+    </script>
+
+    <!-- App Scripts (only loads if authenticated view is shown) -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
