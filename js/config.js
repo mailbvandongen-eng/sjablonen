@@ -12,8 +12,14 @@ export const INFORMATIEMANAGERS = [
 
 // Stakeholder rollen I-domein
 export const STAKEHOLDER_ROLLEN = [
+    'Opdrachtgever',
     'Architectuur',
-    'ISO'
+    'ISO',
+    'InformatieBeheer',
+    'ITB',
+    'Strategische Informatiemanager',
+    'Business Analist',
+    'BICC (productowner)'
 ];
 
 // Beschikbare stakeholder personen (voor picklists)
@@ -22,10 +28,16 @@ export const STAKEHOLDER_PERSONEN = [
     { id: 'psteevensz', naam: 'Pasqual Steevensz', email: 'pwcsteevensz@gemeentewestland.nl' }
 ];
 
-// Vaste Stakeholders I-domein (legacy, voor backwards compatibility)
+// Vaste Stakeholders I-domein
 export const STAKEHOLDERS_IDOMEIN = [
+    { rol: 'Opdrachtgever', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
     { rol: 'Architectuur', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'ISO', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' }
+    { rol: 'ISO', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'InformatieBeheer', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'ITB', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Strategische Informatiemanager', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Business Analist', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'BICC (productowner)', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' }
 ];
 
 // Intake workflow statussen

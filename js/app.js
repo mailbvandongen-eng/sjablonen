@@ -482,9 +482,16 @@ function renderIntakeForm(form, isKlantView = false) {
             <p class="text-muted mb-2">Selecteer per rol de stakeholder voor review en akkoord.</p>
             <div class="stakeholder-picklist-container">
                 ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
-                    <div class="stakeholder-picklist-row">
+                    <div class="stakeholder-picklist-row ${s.geinformeerd ? 'shared' : ''}">
                         <div class="stakeholder-rol">
                             <strong>${escapeHtml(s.rol)}</strong>
+                            ${s.geinformeerd ? `
+                                <span class="shared-badge" title="Gedeeld">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </span>
+                            ` : ''}
                         </div>
                         <div class="stakeholder-select">
                             <select class="form-select" onchange="updateStakeholderPersoon(${idx}, this.value)">

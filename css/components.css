@@ -1204,3 +1204,26 @@ wl-attachments {
     font-weight: 500;
     margin-right: var(--wl-spacing-sm);
 }
+
+.stakeholder-picklist-row.shared {
+    background: var(--wl-success-light, #d4edda);
+    border-left: 3px solid var(--wl-success);
+}
+
+.shared-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: var(--wl-success);
+    color: white;
+    border-radius: 50%;
+    margin-left: var(--wl-spacing-xs);
+    vertical-align: middle;
+}
+
+.shared-badge svg {
+    width: 12px;
+    height: 12px;
+}
