@@ -60,25 +60,8 @@ function renderHome() {
                     </div>
                 `).join('')}
             </div>
-
-            <div class="mt-4">
-                <h2>Of importeer een bestaand formulier</h2>
-                <div class="card">
-                    <p>Heb je een JSON-bestand ontvangen? Importeer het hier om verder te werken.</p>
-                    <input type="file" id="import-file" accept=".json" style="display: none;">
-                    <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                        </svg>
-                        Importeer JSON
-                    </button>
-                </div>
-            </div>
         </div>
     `;
-
-    // Setup import handler
-    document.getElementById('import-file').addEventListener('change', handleImport);
 }
 
 /**
@@ -234,6 +217,13 @@ function renderForm(form) {
                         </div>
                     </div>
                     <div class="d-flex gap-1">
+                        <button class="btn btn-primary" onclick="openAIAssistent()">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"/>
+                                <path d="M10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                            </svg>
+                            AI Assistent
+                        </button>
                         ${form.formType === 'intakeformulier' ? `
                             <button class="btn btn-secondary" onclick="getSimpleIntakeLink()" title="Link voor aanvragers">
                                 <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -247,12 +237,6 @@ function renderForm(form) {
                                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
                             </svg>
                             Delen
-                        </button>
-                        <button class="btn btn-secondary" onclick="exportCurrentForm()">
-                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                            Export
                         </button>
                     </div>
                 </div>
@@ -1096,9 +1080,378 @@ Met vriendelijke groet`);
 };
 
 /**
- * Handle file import
+ * Open AI Assistent modal
  */
-async function handleImport(e) {
+window.openAIAssistent = function() {
+    if (!currentForm) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'ai-assistent-modal';
+    modal.innerHTML = `
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>AI Assistent</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="ai-assistent-steps">
+                    <!-- Stap 1: Context invoeren -->
+                    <div class="ai-step" id="ai-step-1">
+                        <h4>Stap 1: Voeg context toe</h4>
+                        <p class="text-muted">Plak hier alle relevante informatie: emails, notities, documenten, etc.</p>
+                        <textarea id="ai-context-input" class="form-textarea" style="min-height: 200px;" placeholder="Plak hier de tekst van emails, documenten, notities of andere informatie die je wilt gebruiken om het formulier in te vullen..."></textarea>
+                        <div class="mt-2">
+                            <button class="btn btn-primary" onclick="generateAIPrompt()">
+                                Genereer prompt voor AI
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stap 2: Prompt kopiëren -->
+                    <div class="ai-step" id="ai-step-2" style="display: none;">
+                        <h4>Stap 2: Kopieer prompt naar ChatGPT/Copilot</h4>
+                        <p class="text-muted">Kopieer onderstaande prompt en plak deze in ChatGPT, Copilot, of een andere AI.</p>
+                        <textarea id="ai-generated-prompt" class="form-textarea" style="min-height: 250px; font-family: monospace; font-size: 12px;" readonly></textarea>
+                        <div class="mt-2 d-flex gap-1">
+                            <button class="btn btn-primary" onclick="copyAIPrompt()">
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                                </svg>
+                                Kopieer prompt
+                            </button>
+                            <button class="btn btn-secondary" onclick="showAIStep(3)">
+                                Volgende: AI antwoord plakken
+                            </button>
+                            <button class="btn btn-secondary" onclick="showAIStep(1)">
+                                Terug
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stap 3: AI antwoord plakken -->
+                    <div class="ai-step" id="ai-step-3" style="display: none;">
+                        <h4>Stap 3: Plak het AI antwoord</h4>
+                        <p class="text-muted">Kopieer het volledige antwoord van de AI (inclusief de JSON) en plak het hieronder.</p>
+                        <textarea id="ai-response-input" class="form-textarea" style="min-height: 250px; font-family: monospace; font-size: 12px;" placeholder="Plak hier het volledige AI antwoord..."></textarea>
+                        <div class="mt-2 d-flex gap-1">
+                            <button class="btn btn-primary" onclick="applyAIResponse()">
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Formulier invullen
+                            </button>
+                            <button class="btn btn-secondary" onclick="showAIStep(2)">
+                                Terug
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+};
+
+/**
+ * Show specific AI step
+ */
+window.showAIStep = function(step) {
+    document.querySelectorAll('.ai-step').forEach(el => el.style.display = 'none');
+    document.getElementById(`ai-step-${step}`).style.display = 'block';
+};
+
+/**
+ * Generate AI prompt based on form type and context
+ */
+window.generateAIPrompt = function() {
+    const context = document.getElementById('ai-context-input').value;
+    if (!context.trim()) {
+        showToast('Voer eerst context informatie in', 'error');
+        return;
+    }
+
+    const formType = currentForm.formType;
+    const formStructure = getFormStructureForPrompt(formType);
+
+    const prompt = `Je bent een assistent die helpt bij het invullen van formulieren voor Gemeente Westland.
+
+TAAK: Analyseer de onderstaande informatie en vul het ${FORM_TYPES[formType]?.label || formType} formulier in.
+
+FORMULIER STRUCTUUR:
+${formStructure}
+
+CONTEXT INFORMATIE:
+---
+${context}
+---
+
+INSTRUCTIES:
+1. Analyseer de context informatie zorgvuldig
+2. Extraheer relevante gegevens voor elk veld
+3. Als informatie ontbreekt, laat het veld leeg (null)
+4. Geef je antwoord als valide JSON in het volgende formaat
+
+ANTWOORD FORMAT (alleen JSON, geen andere tekst):
+\`\`\`json
+${getFormJSONTemplate(formType)}
+\`\`\`
+
+Vul de JSON in met de geëxtraheerde informatie. Gebruik null voor ontbrekende velden.`;
+
+    document.getElementById('ai-generated-prompt').value = prompt;
+    showAIStep(2);
+};
+
+/**
+ * Get form structure description for prompt
+ */
+function getFormStructureForPrompt(formType) {
+    switch(formType) {
+        case 'intakeformulier':
+            return `- basisinfo: onderwerp, aanvrager, opdrachtgever, domeinTeam, korteOmschrijving, datumIntake
+- vragen:
+  - inleiding: Aanleiding/inleiding van de aanvraag
+  - doel: Wat wil de aanvrager bereiken?
+  - huidigeSituatie: Beschrijving huidige situatie
+  - gewensteSituatie: Beschrijving gewenste situatie
+  - scope: Wat valt binnen/buiten scope?
+  - randvoorwaarden: Randvoorwaarden en uitgangspunten
+  - afhankelijkheden: Afhankelijkheden met andere projecten
+  - risicos: Bekende risico's
+  - planning: Gewenste planning/deadline`;
+
+        case 'klein-project-mandaat':
+            return `- documentgegevens: kkvNaam, kkvNummer, datum, documentlocatie
+- kkv:
+  - aanleiding: Waarom dit verzoek?
+  - doel: Wat willen we bereiken?
+  - scope: Wat valt binnen/buiten scope?
+  - oplossingsrichting: Voorgestelde oplossing
+  - startdatum, doorlooptijd
+  - businesscase: eenmaligeKosten, structureleKosten, baten`;
+
+        case 'ict-projectmandaat':
+            return `- documentgegevens: projectnaam, projectnummer, auteur, documentlocatie
+- project:
+  - aanleiding: Waarom dit project?
+  - doelstelling: Wat willen we bereiken?
+  - scope: Wat valt binnen/buiten scope?
+  - resultaat: Verwachte resultaten
+  - risicos: Bekende risico's
+- businesscase: eenmaligeKosten, terugkerendeKosten, opbrengst`;
+
+        case 'impactanalyse':
+            return `- header: tpNummer, omschrijving, informatiemanager, businessAnalist, startdatum, prognoseEinddatum
+- inleidingScope: inleiding
+- situatie:
+  - huidig: functioneel, processen
+  - gewenst: functioneel, processen
+- impact: privacySecurity, architectuur, informatiebeheer, doorlooptijd
+- conclusie, advies`;
+
+        default:
+            return 'Onbekend formuliertype';
+    }
+}
+
+/**
+ * Get JSON template for form type
+ */
+function getFormJSONTemplate(formType) {
+    switch(formType) {
+        case 'intakeformulier':
+            return `{
+  "basisinfo": {
+    "onderwerp": "string of null",
+    "aanvrager": "string of null",
+    "opdrachtgever": "string of null",
+    "domeinTeam": "string of null",
+    "korteOmschrijving": "string of null",
+    "datumIntake": "YYYY-MM-DD of null"
+  },
+  "vragen": {
+    "inleiding": "string of null",
+    "doel": "string of null",
+    "huidigeSituatie": "string of null",
+    "gewensteSituatie": "string of null",
+    "scope": "string of null",
+    "randvoorwaarden": "string of null",
+    "afhankelijkheden": "string of null",
+    "risicos": "string of null",
+    "planning": "string of null"
+  }
+}`;
+
+        case 'klein-project-mandaat':
+            return `{
+  "documentgegevens": {
+    "kkvNaam": "string of null",
+    "kkvNummer": "string of null",
+    "datum": "YYYY-MM-DD of null"
+  },
+  "kkv": {
+    "aanleiding": "string of null",
+    "doel": "string of null",
+    "scope": "string of null",
+    "oplossingsrichting": "string of null",
+    "startdatum": "YYYY-MM-DD of null",
+    "doorlooptijd": "string of null",
+    "businesscase": {
+      "eenmaligeKosten": "string of null",
+      "structureleKosten": "string of null",
+      "baten": "string of null"
+    }
+  }
+}`;
+
+        case 'ict-projectmandaat':
+            return `{
+  "documentgegevens": {
+    "projectnaam": "string of null",
+    "projectnummer": "string of null",
+    "auteur": "string of null"
+  },
+  "project": {
+    "aanleiding": "string of null",
+    "doelstelling": "string of null",
+    "scope": "string of null",
+    "resultaat": "string of null",
+    "risicos": "string of null"
+  },
+  "businesscase": {
+    "eenmaligeKosten": "string of null",
+    "terugkerendeKosten": "string of null",
+    "opbrengst": "string of null"
+  }
+}`;
+
+        case 'impactanalyse':
+            return `{
+  "header": {
+    "tpNummer": "string of null",
+    "omschrijving": "string of null",
+    "informatiemanager": "string of null",
+    "businessAnalist": "string of null",
+    "startdatum": "YYYY-MM-DD of null",
+    "prognoseEinddatum": "YYYY-MM-DD of null"
+  },
+  "inleidingScope": {
+    "inleiding": "string of null"
+  },
+  "situatie": {
+    "huidig": { "functioneel": "string of null", "processen": "string of null" },
+    "gewenst": { "functioneel": "string of null", "processen": "string of null" }
+  },
+  "impact": {
+    "privacySecurity": "string of null",
+    "architectuur": "string of null",
+    "informatiebeheer": "string of null",
+    "doorlooptijd": "string of null"
+  },
+  "conclusie": "string of null",
+  "advies": "string of null"
+}`;
+
+        default:
+            return '{}';
+    }
+}
+
+/**
+ * Copy AI prompt to clipboard
+ */
+window.copyAIPrompt = function() {
+    const prompt = document.getElementById('ai-generated-prompt').value;
+    navigator.clipboard.writeText(prompt).then(() => {
+        showToast('Prompt gekopieerd! Plak in ChatGPT of Copilot.', 'success');
+    });
+};
+
+/**
+ * Apply AI response to form
+ */
+window.applyAIResponse = function() {
+    const response = document.getElementById('ai-response-input').value;
+
+    // Try to extract JSON from response
+    let jsonData = null;
+
+    // Try to find JSON in code block
+    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+        try {
+            jsonData = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+            // Continue to next method
+        }
+    }
+
+    // Try to find raw JSON object
+    if (!jsonData) {
+        const rawJsonMatch = response.match(/\{[\s\S]*\}/);
+        if (rawJsonMatch) {
+            try {
+                jsonData = JSON.parse(rawJsonMatch[0]);
+            } catch (e) {
+                // Continue
+            }
+        }
+    }
+
+    if (!jsonData) {
+        showToast('Kon geen geldige JSON vinden in het antwoord', 'error');
+        return;
+    }
+
+    // Merge AI data into current form
+    mergeAIDataIntoForm(jsonData);
+
+    // Close modal
+    document.getElementById('ai-assistent-modal')?.remove();
+
+    // Re-render form
+    renderForm(currentForm);
+    setupAutoSave();
+
+    showToast('Formulier ingevuld met AI gegevens!', 'success');
+};
+
+/**
+ * Merge AI data into current form
+ */
+function mergeAIDataIntoForm(aiData) {
+    // Deep merge function
+    function deepMerge(target, source) {
+        for (const key in source) {
+            if (source[key] === null || source[key] === 'null' || source[key] === 'string of null') {
+                continue; // Skip null values
+            }
+            if (typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                if (!target[key]) target[key] = {};
+                deepMerge(target[key], source[key]);
+            } else {
+                target[key] = source[key];
+            }
+        }
+    }
+
+    deepMerge(currentForm, aiData);
+}
+
+/**
+ * Handle file import (global, from hamburger menu)
+ */
+window.handleGlobalImport = async function(e) {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -1116,7 +1469,7 @@ async function handleImport(e) {
     }
 
     e.target.value = '';
-}
+};
 
 /**
  * List item helpers

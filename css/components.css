@@ -56,6 +56,94 @@ wl-header nav a.active {
     color: var(--wl-white);
 }
 
+/* Hamburger Menu */
+wl-header .header-menu {
+    position: relative;
+    margin-left: var(--wl-spacing-md);
+}
+
+wl-header .menu-toggle {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: var(--wl-gray-100);
+    border-radius: var(--wl-border-radius);
+    cursor: pointer;
+    color: var(--wl-gray-700);
+    transition: background 0.2s;
+}
+
+wl-header .menu-toggle:hover {
+    background: var(--wl-gray-200);
+}
+
+wl-header .menu-dropdown {
+    position: absolute;
+    top: calc(100% + var(--wl-spacing-sm));
+    right: 0;
+    background: var(--wl-white);
+    border-radius: var(--wl-border-radius-lg);
+    box-shadow: var(--wl-shadow-lg);
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    z-index: 200;
+}
+
+wl-header .menu-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+wl-header .menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--wl-spacing-sm);
+    width: 100%;
+    padding: var(--wl-spacing-md);
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: var(--wl-font-size-base);
+    color: var(--wl-gray-700);
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+wl-header .menu-item:hover {
+    background: var(--wl-gray-50);
+}
+
+wl-header .menu-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+wl-header .menu-item:disabled:hover {
+    background: none;
+}
+
+wl-header .menu-item:first-child {
+    border-radius: var(--wl-border-radius-lg) var(--wl-border-radius-lg) 0 0;
+}
+
+wl-header .menu-item:last-child {
+    border-radius: 0 0 var(--wl-border-radius-lg) var(--wl-border-radius-lg);
+}
+
+wl-header .menu-divider {
+    height: 1px;
+    background: var(--wl-gray-200);
+    margin: var(--wl-spacing-xs) 0;
+}
+
 /* Form Section Component */
 wl-form-section {
     display: block;
@@ -700,4 +788,18 @@ wl-attachments {
 
 .btn-teams:hover {
     background: #5558A3;
+}
+
+/* AI Assistent Styles */
+.ai-assistent-steps {
+    min-height: 300px;
+}
+
+.ai-step h4 {
+    color: var(--wl-primary);
+    margin-bottom: var(--wl-spacing-sm);
+}
+
+.ai-step .text-muted {
+    margin-bottom: var(--wl-spacing-md);
 }
