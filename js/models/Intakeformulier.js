@@ -51,12 +51,13 @@ export class Intakeformulier extends FormBase {
             opmerkingen: ''
         };
 
-        // Stakeholders I-domein (vaste lijst)
+        // Stakeholders I-domein (vaste rollen met picklist personen)
         this.stakeholders = STAKEHOLDERS_IDOMEIN.map(s => ({
             rol: s.rol,
-            naam: s.naam,
-            email: s.email,
-            geinformeerd: null,
+            persoonId: s.persoonId || '',
+            naam: s.naam || '',
+            email: s.email || '',
+            geinformeerd: false,
             akkoord: null,
             feedbackDatum: null,
             feedback: ''

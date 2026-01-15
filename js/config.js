@@ -10,10 +10,22 @@ export const INFORMATIEMANAGERS = [
     { id: 'psteevensz', naam: 'Pasqual Steevensz', email: 'pwcsteevensz@gemeentewestland.nl' }
 ];
 
-// Vaste Stakeholders I-domein
+// Stakeholder rollen I-domein
+export const STAKEHOLDER_ROLLEN = [
+    'Architectuur',
+    'ISO'
+];
+
+// Beschikbare stakeholder personen (voor picklists)
+export const STAKEHOLDER_PERSONEN = [
+    { id: 'bvdongen', naam: 'Bob van Dongen', email: 'bvdongen@gemeentewestland.nl' },
+    { id: 'psteevensz', naam: 'Pasqual Steevensz', email: 'pwcsteevensz@gemeentewestland.nl' }
+];
+
+// Vaste Stakeholders I-domein (legacy, voor backwards compatibility)
 export const STAKEHOLDERS_IDOMEIN = [
-    { rol: 'Architectuur', naam: 'Bob van Dongen', email: 'bvdongen@gemeentewestland.nl' },
-    { rol: 'ISO', naam: 'Pasqual Steevensz', email: 'pwcsteevensz@gemeentewestland.nl' }
+    { rol: 'Architectuur', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'ISO', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' }
 ];
 
 // Intake workflow statussen
@@ -51,6 +63,8 @@ export const IM_ONLY_VELDEN = {
 
 export default {
     INFORMATIEMANAGERS,
+    STAKEHOLDER_ROLLEN,
+    STAKEHOLDER_PERSONEN,
     STAKEHOLDERS_IDOMEIN,
     INTAKE_STATUS,
     INTAKE_STATUS_LABELS,

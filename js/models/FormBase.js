@@ -10,6 +10,8 @@ export class FormBase {
         this.formType = formType;
         this.version = '1.0';
         this.status = 'draft'; // draft | in_review | approved
+        this.archived = false;
+        this.archivedAt = null;
         this.createdAt = new Date().toISOString();
         this.updatedAt = this.createdAt;
         this.createdBy = '';

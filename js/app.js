@@ -26,7 +26,7 @@ import { ICTProjectMandaat, ICT_PROJECT_SECTIES } from './models/ICTProjectManda
 import { Impactanalyse, IMPACT_SECTIES, RISICO_KANS_OPTIES, RISICO_IMPACT_OPTIES } from './models/Impactanalyse.js';
 
 // Import config
-import { INFORMATIEMANAGERS, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
+import { INFORMATIEMANAGERS, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
 
 // Initialize services
 const dataService = new DataService(new LocalStorageAdapter());
@@ -71,14 +71,16 @@ function renderHome() {
  * Render forms list
  */
 async function renderFormsList() {
-    const forms = await dataService.listForms();
+    const allForms = await dataService.listForms();
+    const forms = allForms.filter(f => !f.archived);
+    const archivedForms = allForms.filter(f => f.archived);
     const app = document.getElementById('app');
 
     app.innerHTML = `
         <div class="page-header">
             <div class="container">
                 <h1>Mijn Formulieren</h1>
-                <p>${forms.length} formulier${forms.length !== 1 ? 'en' : ''} opgeslagen</p>
+                <p>${forms.length} formulier${forms.length !== 1 ? 'en' : ''} actief${archivedForms.length > 0 ? `, ${archivedForms.length} gearchiveerd` : ''}</p>
             </div>
         </div>
         <div class="container">
@@ -94,10 +96,27 @@ async function renderFormsList() {
                     <a href="#/" class="btn btn-primary mt-2">Nieuw formulier maken</a>
                 </div>
             ` : `
+                <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                    <span class="bulk-count"><span id="selected-count">0</span> geselecteerd</span>
+                    <button class="btn btn-sm btn-secondary" onclick="bulkArchive()">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/>
+                            <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Archiveer selectie
+                    </button>
+                    <button class="btn btn-sm" onclick="bulkDelete()" style="color: var(--wl-error);">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Verwijder selectie
+                    </button>
+                </div>
                 <div class="table-container card">
                     <table>
                         <thead>
                             <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"></th>
                                 <th>Naam</th>
                                 <th>Type</th>
                                 <th>Status</th>
@@ -112,6 +131,7 @@ async function renderFormsList() {
                                 const name = getFormName(form);
                                 return `
                                     <tr>
+                                        <td><input type="checkbox" class="form-checkbox" data-form-id="${form.id}" onchange="updateBulkSelection()"></td>
                                         <td><a href="#/form/${form.formType}/${form.id}">${escapeHtml(name)}</a></td>
                                         <td>${typeInfo.label}</td>
                                         <td><span class="badge ${statusInfo.class}">${statusInfo.label}</span></td>
@@ -120,7 +140,12 @@ async function renderFormsList() {
                                             <div class="d-flex gap-1">
                                                 <a href="#/form/${form.formType}/${form.id}" class="btn btn-sm btn-secondary">Openen</a>
                                                 <button class="btn btn-sm btn-secondary" onclick="exportForm('${form.id}')">Export</button>
-                                                <button class="btn btn-sm btn-secondary" onclick="deleteForm('${form.id}')" style="color: var(--wl-error)">Verwijder</button>
+                                                <button class="btn btn-sm btn-secondary" onclick="archiveForm('${form.id}')" title="Archiveren">
+                                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/>
+                                                        <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -130,6 +155,64 @@ async function renderFormsList() {
                     </table>
                 </div>
             `}
+
+            ${archivedForms.length > 0 ? `
+                <div class="archive-section mt-4">
+                    <button class="archive-toggle" onclick="this.parentElement.classList.toggle('open')">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/>
+                            <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Archief (${archivedForms.length})
+                        <svg class="chevron" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                    <div class="archive-content">
+                        <div class="table-container card">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Naam</th>
+                                        <th>Type</th>
+                                        <th>Gearchiveerd op</th>
+                                        <th>Acties</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${archivedForms.map(form => {
+                                        const typeInfo = FORM_TYPES[form.formType] || { label: form.formType };
+                                        const name = getFormName(form);
+                                        return `
+                                            <tr>
+                                                <td>${escapeHtml(name)}</td>
+                                                <td>${typeInfo.label}</td>
+                                                <td>${formatDate(form.archivedAt, true)}</td>
+                                                <td>
+                                                    <div class="d-flex gap-1">
+                                                        <button class="btn btn-sm btn-secondary" onclick="restoreForm('${form.id}')" title="Herstellen">
+                                                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                            Herstel
+                                                        </button>
+                                                        <button class="btn btn-sm btn-secondary" onclick="deleteForm('${form.id}')" style="color: var(--wl-error)" title="Permanent verwijderen">
+                                                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                            </svg>
+                                                            Verwijder
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `;
 }
@@ -227,14 +310,6 @@ function renderForm(form) {
                             </svg>
                             AI Assistent
                         </button>
-                        ${form.formType === 'intakeformulier' ? `
-                            <button class="btn btn-secondary" onclick="getSimpleIntakeLink()" title="Link voor aanvragers">
-                                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
-                                </svg>
-                                Aanvrager link
-                            </button>
-                        ` : ''}
                         <button class="btn btn-secondary" onclick="shareForm()">
                             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
@@ -317,9 +392,9 @@ function renderIntakeForm(form, isKlantView = false) {
                     <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
                 </div>
             </div>
-            ${form.intakeStatus === INTAKE_STATUS.DRAFT ? `
+            ${form.intakeStatus === INTAKE_STATUS.DRAFT && form.informatiemanager ? `
                 <div class="workflow-actions mt-2">
-                    <button class="btn btn-primary" onclick="deelMetKlant()" ${!form.informatiemanager ? 'disabled' : ''}>
+                    <button class="btn btn-primary" onclick="deelMetKlant()">
                         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
                         </svg>
@@ -404,20 +479,31 @@ function renderIntakeForm(form, isKlantView = false) {
 
         ${!isKlantView ? `
         <wl-form-section title="Stakeholders I-domein" section-id="stakeholders">
-            <p class="text-muted mb-2">Selecteer stakeholders voor review en akkoord.</p>
-            <div class="stakeholder-checklist">
+            <p class="text-muted mb-2">Selecteer per rol de stakeholder voor review en akkoord.</p>
+            <div class="stakeholder-picklist-container">
                 ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
-                    <div class="stakeholder-check-item">
-                        <label class="checkbox-label">
-                            <input type="checkbox"
-                                   data-stakeholder-idx="${idx}"
-                                   ${s.geinformeerd ? 'checked' : ''}
-                                   onchange="toggleStakeholder(${idx}, this.checked)">
-                            <span class="stakeholder-details">
-                                <strong>${escapeHtml(s.rol || s.team)}</strong>
-                                <span>${escapeHtml(s.naam)} (${escapeHtml(s.email)})</span>
-                            </span>
-                        </label>
+                    <div class="stakeholder-picklist-row">
+                        <div class="stakeholder-rol">
+                            <strong>${escapeHtml(s.rol)}</strong>
+                        </div>
+                        <div class="stakeholder-select">
+                            <select class="form-select" onchange="updateStakeholderPersoon(${idx}, this.value)">
+                                <option value="">-- Selecteer persoon --</option>
+                                ${STAKEHOLDER_PERSONEN.map(p => `
+                                    <option value="${p.id}" ${s.persoonId === p.id ? 'selected' : ''}>${p.naam}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="stakeholder-status">
+                            ${s.persoonId ? `
+                                <label class="checkbox-label">
+                                    <input type="checkbox"
+                                           ${s.geinformeerd ? 'checked' : ''}
+                                           onchange="toggleStakeholder(${idx}, this.checked)">
+                                    Geïnformeerd
+                                </label>
+                            ` : ''}
+                        </div>
                         ${s.feedback ? `
                             <div class="stakeholder-feedback">
                                 <span class="feedback-date">${formatDate(s.feedbackDatum, true)}</span>
@@ -1012,10 +1098,115 @@ window.exportForm = async function(formId) {
  * Delete form
  */
 window.deleteForm = async function(formId) {
-    if (!confirm('Weet je zeker dat je dit formulier wilt verwijderen?')) return;
+    if (!confirm('Weet je zeker dat je dit formulier permanent wilt verwijderen?')) return;
 
     await dataService.deleteForm(formId);
     showToast('Formulier verwijderd', 'success');
+    renderFormsList();
+};
+
+/**
+ * Archive form
+ */
+window.archiveForm = async function(formId) {
+    const form = await dataService.loadForm(formId);
+    if (!form) return;
+
+    form.archived = true;
+    form.archivedAt = new Date().toISOString();
+    await dataService.saveForm(form);
+    showToast('Formulier gearchiveerd', 'success');
+    renderFormsList();
+};
+
+/**
+ * Restore form from archive
+ */
+window.restoreForm = async function(formId) {
+    const form = await dataService.loadForm(formId);
+    if (!form) return;
+
+    form.archived = false;
+    form.archivedAt = null;
+    await dataService.saveForm(form);
+    showToast('Formulier hersteld', 'success');
+    renderFormsList();
+};
+
+/**
+ * Toggle select all checkboxes
+ */
+window.toggleSelectAll = function(checked) {
+    document.querySelectorAll('.form-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBulkSelection();
+};
+
+/**
+ * Update bulk selection UI
+ */
+window.updateBulkSelection = function() {
+    const checkboxes = document.querySelectorAll('.form-checkbox');
+    const checked = document.querySelectorAll('.form-checkbox:checked');
+    const bulkActions = document.getElementById('bulk-actions');
+    const selectedCount = document.getElementById('selected-count');
+    const selectAll = document.getElementById('select-all');
+
+    if (bulkActions) {
+        bulkActions.style.display = checked.length > 0 ? 'flex' : 'none';
+    }
+    if (selectedCount) {
+        selectedCount.textContent = checked.length;
+    }
+    if (selectAll) {
+        selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+    }
+};
+
+/**
+ * Get selected form IDs
+ */
+function getSelectedFormIds() {
+    return Array.from(document.querySelectorAll('.form-checkbox:checked'))
+        .map(cb => cb.dataset.formId);
+}
+
+/**
+ * Bulk archive forms
+ */
+window.bulkArchive = async function() {
+    const ids = getSelectedFormIds();
+    if (ids.length === 0) return;
+
+    for (const id of ids) {
+        const form = await dataService.loadForm(id);
+        if (form) {
+            form.archived = true;
+            form.archivedAt = new Date().toISOString();
+            await dataService.saveForm(form);
+        }
+    }
+    showToast(`${ids.length} formulier${ids.length !== 1 ? 'en' : ''} gearchiveerd`, 'success');
+    renderFormsList();
+};
+
+/**
+ * Bulk delete forms
+ */
+window.bulkDelete = async function() {
+    const ids = getSelectedFormIds();
+    if (ids.length === 0) return;
+
+    if (!confirm(`Weet je zeker dat je ${ids.length} formulier${ids.length !== 1 ? 'en' : ''} permanent wilt verwijderen?`)) {
+        return;
+    }
+
+    for (const id of ids) {
+        await dataService.deleteForm(id);
+    }
+    showToast(`${ids.length} formulier${ids.length !== 1 ? 'en' : ''} verwijderd`, 'success');
     renderFormsList();
 };
 
@@ -1045,18 +1236,9 @@ window.shareForm = function() {
                 </button>
             </div>
             <div class="modal-body">
-                <p><strong>Export als bestand</strong></p>
-                <p class="text-muted" style="font-size: var(--wl-font-size-sm);">Download het formulier en verstuur als bijlage.</p>
-                <button class="btn btn-secondary" onclick="exportCurrentForm()">
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    Download JSON
-                </button>
-
                 ${stakeholders.length > 0 ? `
                     <div class="share-stakeholders">
-                        <h4>Direct delen met stakeholders</h4>
+                        <h4>Delen met stakeholders</h4>
                         <p class="text-muted" style="font-size: var(--wl-font-size-sm);">Klik op Email of Teams om direct een bericht te sturen.</p>
                         <div class="stakeholder-share-list">
                             ${stakeholders.map(s => {
@@ -1067,13 +1249,6 @@ Graag vraag ik je om het volgende formulier te reviewen en je feedback te geven:
 
 Formulier: ${formName}
 Type: ${FORM_TYPES[currentForm.formType]?.label || currentForm.formType}
-
-Instructies:
-1. Download het bijgevoegde JSON bestand
-2. Ga naar de formulieren website
-3. Klik op "Importeer JSON" op de startpagina
-4. Review de gegevens en voeg je opmerkingen toe
-5. Exporteer het formulier weer en stuur het terug
 
 Met vriendelijke groet`);
                                 const teamsMessage = encodeURIComponent(`Hoi ${s.naam}, kun je dit formulier reviewen? "${formName}" - Graag je feedback/akkoord. Bedankt!`);
@@ -1766,6 +1941,8 @@ window.updateIM = function(imId) {
     if (!currentForm) return;
     currentForm.informatiemanager = imId;
     triggerAutoSave();
+    // Re-render om workflow knoppen te updaten
+    renderForm(currentForm);
 };
 
 /**
@@ -1775,6 +1952,27 @@ window.toggleStakeholder = function(idx, checked) {
     if (!currentForm || !currentForm.stakeholders) return;
     currentForm.stakeholders[idx].geinformeerd = checked;
     triggerAutoSave();
+};
+
+/**
+ * Update stakeholder persoon
+ */
+window.updateStakeholderPersoon = function(idx, persoonId) {
+    if (!currentForm || !currentForm.stakeholders) return;
+
+    const persoon = STAKEHOLDER_PERSONEN.find(p => p.id === persoonId);
+    if (persoon) {
+        currentForm.stakeholders[idx].persoonId = persoonId;
+        currentForm.stakeholders[idx].naam = persoon.naam;
+        currentForm.stakeholders[idx].email = persoon.email;
+    } else {
+        currentForm.stakeholders[idx].persoonId = '';
+        currentForm.stakeholders[idx].naam = '';
+        currentForm.stakeholders[idx].email = '';
+        currentForm.stakeholders[idx].geinformeerd = false;
+    }
+    triggerAutoSave();
+    renderForm(currentForm);
 };
 
 /**
@@ -2115,19 +2313,36 @@ async function renderWerkvoorraad() {
 }
 
 function renderWerkvoorraadContent(intakes, filterIM) {
-    const filtered = filterIM
-        ? intakes.filter(f => f.informatiemanager === filterIM)
-        : intakes;
+    // Toon niets tot een IM is geselecteerd
+    if (!filterIM) {
+        return `
+            <div class="werkvoorraad-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <p>Selecteer een informatiemanager om de werkvoorraad te bekijken</p>
+            </div>
+        `;
+    }
 
-    const statusGroups = {
-        [INTAKE_STATUS.KLANT_GEREED]: { title: 'Terug van klant', items: [], class: 'urgent' },
-        [INTAKE_STATUS.STAKEHOLDER_FEEDBACK]: { title: 'Feedback stakeholders', items: [], class: 'urgent' },
-        [INTAKE_STATUS.DRAFT]: { title: 'Concept', items: [], class: '' },
-        [INTAKE_STATUS.WACHT_OP_KLANT]: { title: 'Wacht op klant', items: [], class: 'waiting' },
-        [INTAKE_STATUS.IN_BEHANDELING]: { title: 'In behandeling', items: [], class: '' },
-        [INTAKE_STATUS.WACHT_OP_STAKEHOLDERS]: { title: 'Wacht op stakeholders', items: [], class: 'waiting' },
-        [INTAKE_STATUS.DEFINITIEF]: { title: 'Definitief', items: [], class: 'done' }
-    };
+    const filtered = intakes.filter(f => f.informatiemanager === filterIM);
+
+    // Volgorde: Concept, Wacht op klant, Terug van klant, Feedback stakeholders
+    const statusOrder = [
+        { status: INTAKE_STATUS.DRAFT, title: 'Concept', class: '' },
+        { status: INTAKE_STATUS.WACHT_OP_KLANT, title: 'Wacht op klant', class: 'waiting' },
+        { status: INTAKE_STATUS.KLANT_GEREED, title: 'Terug van klant', class: 'urgent' },
+        { status: INTAKE_STATUS.STAKEHOLDER_FEEDBACK, title: 'Feedback stakeholders', class: 'urgent' }
+    ];
+
+    // Groepeer items per status
+    const statusGroups = {};
+    statusOrder.forEach(s => {
+        statusGroups[s.status] = { ...s, items: [] };
+    });
 
     filtered.forEach(form => {
         const status = form.intakeStatus || INTAKE_STATUS.DRAFT;
@@ -2136,7 +2351,7 @@ function renderWerkvoorraadContent(intakes, filterIM) {
         }
     });
 
-    return Object.entries(statusGroups).map(([status, group]) => `
+    return statusOrder.map(s => statusGroups[s.status]).map(group => `
         <div class="werkvoorraad-column ${group.class}">
             <div class="column-header">
                 <h3>${group.title}</h3>
@@ -2169,11 +2384,125 @@ window.filterWerkvoorraad = async function() {
     document.getElementById('werkvoorraad-content').innerHTML = renderWerkvoorraadContent(intakes, filterIM);
 };
 
+/**
+ * Render Rapportages page
+ */
+async function renderRapportages() {
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier' && !f.archived);
+    const app = document.getElementById('app');
+
+    app.innerHTML = `
+        <div class="page-header">
+            <div class="container">
+                <h1>Rapportages</h1>
+                <p>Overzicht van alle intakeformulieren</p>
+            </div>
+        </div>
+        <div class="container">
+            ${intakes.length === 0 ? `
+                <div class="card empty-state">
+                    <div class="empty-state-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">Geen intakeformulieren</h3>
+                    <p>Er zijn nog geen intakeformulieren aangemaakt.</p>
+                    <a href="#/new/intakeformulier" class="btn btn-primary mt-2">Nieuw intakeformulier</a>
+                </div>
+            ` : `
+                <div class="card">
+                    <div class="table-actions mb-2">
+                        <button class="btn btn-secondary btn-sm" onclick="exportRapportageCSV()">
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Exporteer CSV
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="rapportage-table">
+                            <thead>
+                                <tr>
+                                    <th>TP Nr</th>
+                                    <th>Naam formulier</th>
+                                    <th>IM</th>
+                                    <th>Deadline noodzakelijk</th>
+                                    <th>Datum deadline</th>
+                                    <th>Contactpersoon</th>
+                                    <th>Prio categorie</th>
+                                    <th>Kosteninschatting</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${intakes.map(form => {
+                                    const im = INFORMATIEMANAGERS.find(i => i.id === form.informatiemanager);
+                                    return `
+                                        <tr onclick="window.location.hash='/form/intakeformulier/${form.id}'" style="cursor: pointer;">
+                                            <td>${escapeHtml(form.basisinfo?.thinkingPortfolioNummer || '-')}</td>
+                                            <td>${escapeHtml(form.basisinfo?.onderwerp || 'Naamloos')}</td>
+                                            <td>${im ? escapeHtml(im.naam) : '-'}</td>
+                                            <td>${form.vragen?.deadlineNoodzakelijk === true ? 'Ja' : form.vragen?.deadlineNoodzakelijk === false ? 'Nee' : '-'}</td>
+                                            <td>${form.vragen?.deadline ? formatDate(form.vragen.deadline) : '-'}</td>
+                                            <td>${escapeHtml(form.vragen?.contactpersoon || '-')}</td>
+                                            <td>${escapeHtml(form.vragen?.prioriteitCategorie || '-')}</td>
+                                            <td>${escapeHtml(form.vragen?.kostenInschatting || '-')}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+/**
+ * Export rapportage as CSV
+ */
+window.exportRapportageCSV = async function() {
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier' && !f.archived);
+
+    const headers = ['TP Nr', 'Naam formulier', 'IM', 'Deadline noodzakelijk', 'Datum deadline', 'Contactpersoon', 'Prio categorie', 'Kosteninschatting'];
+
+    const rows = intakes.map(form => {
+        const im = INFORMATIEMANAGERS.find(i => i.id === form.informatiemanager);
+        return [
+            form.basisinfo?.thinkingPortfolioNummer || '',
+            form.basisinfo?.onderwerp || 'Naamloos',
+            im ? im.naam : '',
+            form.vragen?.deadlineNoodzakelijk === true ? 'Ja' : form.vragen?.deadlineNoodzakelijk === false ? 'Nee' : '',
+            form.vragen?.deadline || '',
+            form.vragen?.contactpersoon || '',
+            form.vragen?.prioriteitCategorie || '',
+            form.vragen?.kostenInschatting || ''
+        ];
+    });
+
+    const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+        .join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rapportage-intakes-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV geëxporteerd', 'success');
+};
+
 // Register routes
 router
     .register('/', renderHome)
     .register('/formulieren', renderFormsList)
     .register('/werkvoorraad', renderWerkvoorraad)
+    .register('/rapportages', renderRapportages)
     .register('/new/:formType', (params) => createNewForm(params.formType))
     .register('/form/:formType/:formId', (params) => loadForm(params.formType, params.formId))
     .register('/intake-simple/:formId', (params) => loadSimpleIntake(params.formId))
