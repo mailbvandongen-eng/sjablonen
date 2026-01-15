@@ -803,3 +803,193 @@ wl-attachments {
 .ai-step .text-muted {
     margin-bottom: var(--wl-spacing-md);
 }
+
+/* Werkvoorraad Dashboard */
+.werkvoorraad-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--wl-spacing-md);
+}
+
+.werkvoorraad-column {
+    background: var(--wl-white);
+    border-radius: var(--wl-border-radius-lg);
+    box-shadow: var(--wl-shadow-sm);
+    overflow: hidden;
+}
+
+.werkvoorraad-column.urgent .column-header {
+    background: var(--wl-error);
+    color: white;
+}
+
+.werkvoorraad-column.waiting .column-header {
+    background: var(--wl-warning);
+    color: var(--wl-gray-900);
+}
+
+.werkvoorraad-column.done .column-header {
+    background: var(--wl-success);
+    color: white;
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--wl-spacing-md);
+    background: var(--wl-gray-100);
+}
+
+.column-header h3 {
+    margin: 0;
+    font-size: var(--wl-font-size-base);
+}
+
+.column-header .count {
+    background: rgba(255,255,255,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: var(--wl-font-size-sm);
+    font-weight: 600;
+}
+
+.column-items {
+    padding: var(--wl-spacing-md);
+    min-height: 100px;
+}
+
+.werkvoorraad-item {
+    display: block;
+    padding: var(--wl-spacing-md);
+    background: var(--wl-gray-50);
+    border-radius: var(--wl-border-radius);
+    margin-bottom: var(--wl-spacing-sm);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.werkvoorraad-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--wl-shadow-md);
+}
+
+.werkvoorraad-item .item-title {
+    font-weight: 600;
+    color: var(--wl-primary);
+    margin-bottom: var(--wl-spacing-xs);
+}
+
+.werkvoorraad-item .item-meta {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+    font-size: var(--wl-font-size-sm);
+    color: var(--wl-gray-500);
+    flex-wrap: wrap;
+}
+
+.werkvoorraad-item .im-badge {
+    background: var(--wl-primary);
+    color: white;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+}
+
+.werkvoorraad-item .item-date {
+    font-size: var(--wl-font-size-sm);
+    color: var(--wl-gray-500);
+    margin-top: var(--wl-spacing-xs);
+}
+
+/* Workflow Section */
+.workflow-section .section-content {
+    background: var(--wl-gray-50);
+}
+
+.workflow-actions {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+    flex-wrap: wrap;
+}
+
+/* Stakeholder Checklist */
+.stakeholder-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wl-spacing-sm);
+}
+
+.stakeholder-check-item {
+    padding: var(--wl-spacing-md);
+    background: var(--wl-gray-50);
+    border-radius: var(--wl-border-radius);
+}
+
+.stakeholder-check-item .checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--wl-spacing-md);
+    cursor: pointer;
+}
+
+.stakeholder-check-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--wl-primary);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.stakeholder-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.stakeholder-details strong {
+    color: var(--wl-gray-900);
+}
+
+.stakeholder-details span {
+    color: var(--wl-gray-500);
+    font-size: var(--wl-font-size-sm);
+}
+
+.stakeholder-feedback {
+    margin-top: var(--wl-spacing-sm);
+    padding: var(--wl-spacing-sm);
+    background: var(--wl-white);
+    border-radius: var(--wl-border-radius);
+    border-left: 3px solid var(--wl-secondary);
+}
+
+.stakeholder-feedback .feedback-date {
+    font-size: var(--wl-font-size-sm);
+    color: var(--wl-gray-500);
+}
+
+/* Klant Submit Section */
+.klant-submit-section {
+    text-align: center;
+    padding: var(--wl-spacing-xl);
+    background: var(--wl-gray-50);
+    border-radius: var(--wl-border-radius-lg);
+    margin-top: var(--wl-spacing-lg);
+}
+
+.klant-submit-section .btn-lg {
+    font-size: var(--wl-font-size-lg);
+    padding: var(--wl-spacing-md) var(--wl-spacing-xl);
+}
+
+/* Badge variants */
+.badge-info {
+    background: var(--wl-info);
+    color: var(--wl-white);
+}
+
+.badge-warning {
+    background: var(--wl-warning);
+    color: var(--wl-gray-900);
+}

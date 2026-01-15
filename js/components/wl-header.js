@@ -21,6 +21,7 @@ class WLHeader extends HTMLElement {
                 </a>
                 <nav>
                     <a href="#/" data-route="/">Overzicht</a>
+                    <a href="#/werkvoorraad" data-route="/werkvoorraad">Werkvoorraad</a>
                     <a href="#/formulieren" data-route="/formulieren">Mijn Formulieren</a>
                 </nav>
                 <div class="header-menu">

@@ -4,21 +4,29 @@
  */
 
 import { FormBase } from './FormBase.js';
+import { STAKEHOLDERS_IDOMEIN, INTAKE_STATUS } from '../config.js';
 
 export class Intakeformulier extends FormBase {
     constructor() {
         super('intakeformulier');
 
+        // Workflow velden
+        this.informatiemanager = '';      // ID van toegewezen IM
+        this.intakeStatus = INTAKE_STATUS.DRAFT;
+        this.klantToken = '';             // Unieke token voor klant-link
+        this.klantIngediendOp = null;     // Wanneer klant heeft ingediend
+        this.stakeholderFeedback = [];    // Feedback van stakeholders
+
         // Basisinformatie
         this.basisinfo = {
             onderwerp: '',
             korteOmschrijving: '',
-            thinkingPortfolioNummer: '',
+            doel: '',                     // Verplaatst: direct onder korte omschrijving
+            thinkingPortfolioNummer: '',  // Alleen IM
             domeinTeam: '',
             datumIntake: null,
             aanvrager: '',
-            opdrachtgever: '',
-            resultaatProjectclassificatie: ''
+            opdrachtgever: ''
         };
 
         // Vraag/Antwoord secties
@@ -27,39 +35,32 @@ export class Intakeformulier extends FormBase {
             scope: '',
             huidigeSituatie: '',
             gewensteSituatie: '',
-            verkenningGedaan: null,
-            prioriteitCategorie: '', // Business ontwikkeling, Innovatie, I-domein dienstverlening, Digitale Transformatie
+            verkenningGedaan: null,       // Alleen IM
+            prioriteitCategorie: '',       // Alleen IM
             deadlineNoodzakelijk: null,
             deadline: '',
-            impactGeenRealisatie: '',
-            opgaveProductVerbeteropdracht: '',
-            doel: '',
-            baten: '',
-            werkprocessen: '',
-            procesbeschrijvingBeschikbaar: null,
-            informatieverwerking: '',
-            nieuwOfBestaand: '', // Nieuw, Bestaand
+            impactGeenRealisatie: '',     // Alleen IM
+            doel: '',                      // Legacy, nu in basisinfo
+            baten: '',                     // Alleen IM
+            informatieverwerking: '',      // Alleen IM
             contactpersoon: '',
-            aantalEindgebruikers: '',
             teamsOfDoelgroepen: '',
-            behoeftesWensenEisen: '',
-            beleidWijziging: null,
-            kostenInschatting: '',
-            aiToepassing: null,
-            opdrachtImpactAnalyse: '',
+            beleidWijziging: null,         // Alleen IM
+            kostenInschatting: '',         // Alleen IM
+            aiToepassing: null,            // Alleen IM
             opmerkingen: ''
         };
 
-        // Stakeholders
-        this.stakeholders = [
-            { team: 'Opdrachtgever', naam: '', geinformeerd: null },
-            { team: 'Architectuur', naam: '', geinformeerd: null },
-            { team: 'ISO', naam: '', geinformeerd: null },
-            { team: 'InformatieBeheer', naam: '', geinformeerd: null },
-            { team: 'Strategische Informatiemanager', naam: 'Mervyn Wiskerke', geinformeerd: null },
-            { team: 'Business Analist', naam: '', geinformeerd: null },
-            { team: 'BICC (productowner)', naam: '', geinformeerd: null }
-        ];
+        // Stakeholders I-domein (vaste lijst)
+        this.stakeholders = STAKEHOLDERS_IDOMEIN.map(s => ({
+            rol: s.rol,
+            naam: s.naam,
+            email: s.email,
+            geinformeerd: null,
+            akkoord: null,
+            feedbackDatum: null,
+            feedback: ''
+        }));
     }
 
     validate() {
@@ -92,134 +93,146 @@ export const PRIORITEIT_OPTIES = [
 ];
 
 // Vraag definities voor het formulier
+// klantZichtbaar: true = zichtbaar voor klant, false = alleen IM
 export const INTAKE_VRAGEN = [
     {
         id: 'inleiding',
-        label: 'Inleiding',
-        vraag: 'Waarom wordt deze aanvraag gedaan?',
+        label: 'Inleiding / Aanleiding',
+        vraag: 'Waarom wordt deze aanvraag gedaan? Wat is de aanleiding?',
         type: 'textarea',
-        required: true
-    },
-    {
-        id: 'scope',
-        label: 'Scope',
-        vraag: 'Wat is de scope van deze aanvraag?',
-        type: 'textarea',
-        required: false
+        required: true,
+        klantZichtbaar: true
     },
     {
         id: 'huidigeSituatie',
         label: 'Huidige situatie',
-        vraag: 'Beschrijf de huidige situatie',
+        vraag: 'Beschrijf de huidige situatie. Hoe werkt het nu?',
         type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: true
     },
     {
         id: 'gewensteSituatie',
         label: 'Gewenste situatie',
-        vraag: 'Beschrijf de gewenste situatie',
+        vraag: 'Beschrijf de gewenste situatie. Hoe zou het moeten werken?',
         type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: true
     },
     {
-        id: 'verkenningGedaan',
-        label: 'Verkenning gedaan',
-        vraag: 'Is er al een verkenning gedaan?',
-        type: 'boolean',
-        required: false
+        id: 'scope',
+        label: 'Scope',
+        vraag: 'Wat valt binnen en buiten de scope van deze aanvraag?',
+        type: 'textarea',
+        required: false,
+        klantZichtbaar: true
     },
     {
-        id: 'prioriteitCategorie',
-        label: 'Prioriteitscategorie',
-        vraag: 'Onder welke prioriteitscategorie valt deze aanvraag?',
-        type: 'select',
-        options: PRIORITEIT_OPTIES,
-        required: true
+        id: 'teamsOfDoelgroepen',
+        label: 'Betrokken teams/doelgroepen',
+        vraag: 'Welke teams of domeinen zijn betrokken bij deze aanvraag?',
+        type: 'textarea',
+        required: false,
+        klantZichtbaar: true
     },
     {
         id: 'deadlineNoodzakelijk',
         label: 'Deadline noodzakelijk',
         vraag: 'Is er een noodzakelijke deadline?',
         type: 'boolean',
-        required: false
+        required: false,
+        klantZichtbaar: true
     },
     {
         id: 'deadline',
         label: 'Deadline',
-        vraag: 'Wat is de deadline?',
+        vraag: 'Wat is de gewenste deadline?',
         type: 'date',
         required: false,
-        showIf: 'deadlineNoodzakelijk'
+        showIf: 'deadlineNoodzakelijk',
+        klantZichtbaar: true
+    },
+    {
+        id: 'contactpersoon',
+        label: 'Contactpersoon',
+        vraag: 'Wie kunnen we benaderen voor inhoudelijke vragen?',
+        type: 'text',
+        required: true,
+        klantZichtbaar: true
+    },
+    {
+        id: 'opmerkingen',
+        label: 'Opmerkingen',
+        vraag: 'Overige opmerkingen of aanvullende informatie',
+        type: 'textarea',
+        required: false,
+        klantZichtbaar: true
+    },
+    // IM-only velden hieronder
+    {
+        id: 'prioriteitCategorie',
+        label: 'Prioriteitscategorie',
+        vraag: 'Onder welke prioriteitscategorie valt deze aanvraag?',
+        type: 'select',
+        options: PRIORITEIT_OPTIES,
+        required: false,
+        klantZichtbaar: false
+    },
+    {
+        id: 'verkenningGedaan',
+        label: 'Verkenning gedaan',
+        vraag: 'Is er al een verkenning gedaan?',
+        type: 'boolean',
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'impactGeenRealisatie',
         label: 'Impact bij geen realisatie',
         vraag: 'Wat is de impact als dit niet wordt gerealiseerd?',
         type: 'textarea',
-        required: false
-    },
-    {
-        id: 'doel',
-        label: 'Doel',
-        vraag: 'Wat is het doel van deze aanvraag?',
-        type: 'textarea',
-        required: true
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'baten',
         label: 'Baten',
         vraag: 'Welke baten worden behaald?',
         type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'informatieverwerking',
         label: 'Informatieverwerking',
         vraag: 'Welke informatie gaat deze oplossing verwerken?',
         type: 'textarea',
-        required: false
-    },
-    {
-        id: 'contactpersoon',
-        label: 'Contactpersoon',
-        vraag: 'Wie is beschikbaar voor inhoudelijke vragen?',
-        type: 'text',
-        required: true
-    },
-    {
-        id: 'teamsOfDoelgroepen',
-        label: 'Teams/Doelgroepen',
-        vraag: 'Welke teams/domeinen zijn betrokken?',
-        type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'beleidWijziging',
         label: 'Beleidswijziging',
         vraag: 'Moet er beleid komen of wijzigen?',
         type: 'boolean',
-        required: false
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'kostenInschatting',
         label: 'Kosteninschatting',
         vraag: 'Wat is de inschatting van de kosten?',
         type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: false
     },
     {
         id: 'aiToepassing',
         label: 'AI Toepassing',
         vraag: 'Is dit een AI-toepassing?',
         type: 'boolean',
-        required: false
-    },
-    {
-        id: 'opmerkingen',
-        label: 'Opmerkingen',
-        vraag: 'Overige opmerkingen of vrije ruimte',
-        type: 'textarea',
-        required: false
+        required: false,
+        klantZichtbaar: false
     }
 ];
 

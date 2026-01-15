@@ -25,6 +25,9 @@ import { KleinProjectMandaat, KKV_SECTIES } from './models/KleinProjectMandaat.j
 import { ICTProjectMandaat, ICT_PROJECT_SECTIES } from './models/ICTProjectMandaat.js';
 import { Impactanalyse, IMPACT_SECTIES, RISICO_KANS_OPTIES, RISICO_IMPACT_OPTIES } from './models/Impactanalyse.js';
 
+// Import config
+import { INFORMATIEMANAGERS, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
+
 // Initialize services
 const dataService = new DataService(new LocalStorageAdapter());
 const router = new Router();
@@ -287,22 +290,91 @@ function renderFormContent(form) {
 /**
  * Render Intakeformulier
  */
-function renderIntakeForm(form) {
+function renderIntakeForm(form, isKlantView = false) {
+    const statusInfo = INTAKE_STATUS_LABELS[form.intakeStatus] || INTAKE_STATUS_LABELS[INTAKE_STATUS.DRAFT];
+    const selectedIM = INFORMATIEMANAGERS.find(im => im.id === form.informatiemanager);
+
+    // Filter vragen op basis van view
+    const visibleVragen = isKlantView
+        ? INTAKE_VRAGEN.filter(v => v.klantZichtbaar)
+        : INTAKE_VRAGEN;
+
     return `
+        ${!isKlantView ? `
+        <wl-form-section title="Workflow" section-id="workflow" class="workflow-section">
+            <div class="form-row">
+                <div class="form-field">
+                    <label class="required">Informatiemanager</label>
+                    <select class="form-select" data-path="informatiemanager" onchange="updateIM(this.value)">
+                        <option value="">-- Selecteer IM --</option>
+                        ${INFORMATIEMANAGERS.map(im => `
+                            <option value="${im.id}" ${form.informatiemanager === im.id ? 'selected' : ''}>${im.naam}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Intake Status</label>
+                    <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
+                </div>
+            </div>
+            ${form.intakeStatus === INTAKE_STATUS.DRAFT ? `
+                <div class="workflow-actions mt-2">
+                    <button class="btn btn-primary" onclick="deelMetKlant()" ${!form.informatiemanager ? 'disabled' : ''}>
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+                        </svg>
+                        Deel met klant
+                    </button>
+                </div>
+            ` : ''}
+            ${form.intakeStatus === INTAKE_STATUS.KLANT_GEREED ? `
+                <div class="alert alert-info mt-2">
+                    <strong>Klant heeft intake ingediend</strong> op ${form.klantIngediendOp ? formatDate(form.klantIngediendOp, true) : 'onbekend'}
+                </div>
+                <div class="workflow-actions mt-2">
+                    <button class="btn btn-primary" onclick="naarInBehandeling()">In behandeling nemen</button>
+                </div>
+            ` : ''}
+            ${form.intakeStatus === INTAKE_STATUS.IN_BEHANDELING ? `
+                <div class="workflow-actions mt-2">
+                    <button class="btn btn-primary" onclick="deelMetStakeholders()">
+                        Deel met stakeholders
+                    </button>
+                </div>
+            ` : ''}
+            ${form.intakeStatus === INTAKE_STATUS.STAKEHOLDER_FEEDBACK ? `
+                <div class="workflow-actions mt-2">
+                    <button class="btn btn-primary" onclick="maakDefinitief()">Maak definitief</button>
+                </div>
+            ` : ''}
+        </wl-form-section>
+        ` : `
+        <div class="alert alert-info mb-3">
+            <strong>Welkom!</strong> Vul onderstaand formulier in. Als u klaar bent, klik dan onderaan op "Intake indienen".
+        </div>
+        `}
+
         <wl-form-section title="Basisinformatie" section-id="basisinfo">
             <div class="form-row">
                 <div class="form-field">
                     <label class="required">Onderwerp</label>
                     <input type="text" class="form-input" data-path="basisinfo.onderwerp" value="${escapeHtml(form.basisinfo?.onderwerp || '')}">
                 </div>
+                ${!isKlantView ? `
                 <div class="form-field">
-                    <label>Thinking Portfolio nummer</label>
-                    <input type="text" class="form-input" data-path="basisinfo.thinkingPortfolioNummer" value="${escapeHtml(form.basisinfo?.thinkingPortfolioNummer || '')}">
+                    <label>TP-nummer</label>
+                    <input type="text" class="form-input" data-path="basisinfo.thinkingPortfolioNummer" value="${escapeHtml(form.basisinfo?.thinkingPortfolioNummer || '')}" placeholder="Thinking Portfolio nummer">
                 </div>
+                ` : ''}
             </div>
             <div class="form-field">
                 <label>Korte omschrijving aanvraag</label>
                 <textarea class="form-textarea" data-path="basisinfo.korteOmschrijving">${escapeHtml(form.basisinfo?.korteOmschrijving || '')}</textarea>
+            </div>
+            <div class="form-field">
+                <label class="required">Doel van de aanvraag</label>
+                <p class="help-text">Wat wil je bereiken met deze aanvraag?</p>
+                <textarea class="form-textarea" data-path="basisinfo.doel">${escapeHtml(form.basisinfo?.doel || '')}</textarea>
             </div>
             <div class="form-row">
                 <div class="form-field">
@@ -324,30 +396,61 @@ function renderIntakeForm(form) {
                     <input type="date" class="form-input" data-path="basisinfo.datumIntake" value="${form.basisinfo?.datumIntake || ''}">
                 </div>
             </div>
-            <wl-comment-panel section-id="basisinfo"></wl-comment-panel>
         </wl-form-section>
 
-        <wl-form-section title="Vragenlijst" section-id="vragen">
-            ${INTAKE_VRAGEN.map(vraag => renderVraag(vraag, form.vragen)).join('')}
-            <wl-comment-panel section-id="vragen"></wl-comment-panel>
+        <wl-form-section title="${isKlantView ? 'Uw aanvraag' : 'Vragenlijst'}" section-id="vragen">
+            ${visibleVragen.map(vraag => renderVraag(vraag, form.vragen, isKlantView)).join('')}
         </wl-form-section>
 
+        ${!isKlantView ? `
         <wl-form-section title="Stakeholders I-domein" section-id="stakeholders">
-            <wl-stakeholder-table id="stakeholders-table" type="geinformeerd" editable></wl-stakeholder-table>
-            <wl-comment-panel section-id="stakeholders"></wl-comment-panel>
+            <p class="text-muted mb-2">Selecteer stakeholders voor review en akkoord.</p>
+            <div class="stakeholder-checklist">
+                ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
+                    <div class="stakeholder-check-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox"
+                                   data-stakeholder-idx="${idx}"
+                                   ${s.geinformeerd ? 'checked' : ''}
+                                   onchange="toggleStakeholder(${idx}, this.checked)">
+                            <span class="stakeholder-details">
+                                <strong>${escapeHtml(s.rol || s.team)}</strong>
+                                <span>${escapeHtml(s.naam)} (${escapeHtml(s.email)})</span>
+                            </span>
+                        </label>
+                        ${s.feedback ? `
+                            <div class="stakeholder-feedback">
+                                <span class="feedback-date">${formatDate(s.feedbackDatum, true)}</span>
+                                <span class="feedback-text">${escapeHtml(s.feedback)}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
         </wl-form-section>
+        ` : ''}
 
         <wl-form-section title="Bijlagen" section-id="attachments">
             <wl-attachments id="form-attachments"></wl-attachments>
-            <wl-comment-panel section-id="attachments"></wl-comment-panel>
         </wl-form-section>
+
+        ${isKlantView ? `
+        <div class="klant-submit-section">
+            <button class="btn btn-primary btn-lg" onclick="klantIndienenIntake()">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Intake indienen
+            </button>
+        </div>
+        ` : ''}
     `;
 }
 
 /**
  * Render a single question
  */
-function renderVraag(vraag, vragen) {
+function renderVraag(vraag, vragen, isKlantView = false) {
     const value = vragen?.[vraag.id] ?? '';
 
     let inputHtml = '';
@@ -1652,13 +1755,343 @@ window.getSimpleIntakeLink = function() {
     return url;
 };
 
+// ==========================================
+// INTAKE WORKFLOW FUNCTIES
+// ==========================================
+
+/**
+ * Update informatiemanager
+ */
+window.updateIM = function(imId) {
+    if (!currentForm) return;
+    currentForm.informatiemanager = imId;
+    triggerAutoSave();
+};
+
+/**
+ * Toggle stakeholder selectie
+ */
+window.toggleStakeholder = function(idx, checked) {
+    if (!currentForm || !currentForm.stakeholders) return;
+    currentForm.stakeholders[idx].geinformeerd = checked;
+    triggerAutoSave();
+};
+
+/**
+ * Deel intake met klant
+ */
+window.deelMetKlant = function() {
+    if (!currentForm || !currentForm.informatiemanager) {
+        showToast('Selecteer eerst een informatiemanager', 'error');
+        return;
+    }
+
+    // Genereer unieke klant token
+    currentForm.klantToken = generateToken();
+    currentForm.intakeStatus = INTAKE_STATUS.WACHT_OP_KLANT;
+
+    saveForm().then(() => {
+        const klantUrl = window.location.origin + window.location.pathname + '#/klant-intake/' + currentForm.id + '/' + currentForm.klantToken;
+
+        // Toon modal met link
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Deel met klant</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>De intake is klaar om te delen met de klant. Kopieer onderstaande link en stuur deze naar de aanvrager.</p>
+                    <div class="form-field">
+                        <input type="text" class="form-input" value="${klantUrl}" readonly id="klant-link-input">
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${klantUrl}'); showToast('Link gekopieerd!', 'success');">
+                            Kopieer link
+                        </button>
+                        <a href="mailto:?subject=Intake formulier: ${encodeURIComponent(currentForm.basisinfo?.onderwerp || 'Nieuwe aanvraag')}&body=${encodeURIComponent('Beste,\\n\\nVul alstublieft het intake formulier in via onderstaande link:\\n\\n' + klantUrl + '\\n\\nMet vriendelijke groet')}" class="btn btn-secondary">
+                            Open in email
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        renderForm(currentForm);
+    });
+};
+
+/**
+ * Generate random token
+ */
+function generateToken() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+/**
+ * Klant dient intake in
+ */
+window.klantIndienenIntake = async function() {
+    if (!currentForm) return;
+
+    // Validatie
+    if (!currentForm.basisinfo?.onderwerp || !currentForm.basisinfo?.aanvrager || !currentForm.basisinfo?.doel) {
+        showToast('Vul alle verplichte velden in (onderwerp, aanvrager, doel)', 'error');
+        return;
+    }
+
+    currentForm.intakeStatus = INTAKE_STATUS.KLANT_GEREED;
+    currentForm.klantIngediendOp = new Date().toISOString();
+
+    await saveForm();
+
+    showToast('Intake ingediend! De informatiemanager neemt contact met u op.', 'success');
+
+    // Toon bevestiging
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="container" style="padding-top: 3rem;">
+            <div class="card" style="text-align: center; max-width: 600px; margin: 0 auto;">
+                <div style="font-size: 4rem; color: var(--wl-success); margin-bottom: 1rem;">✓</div>
+                <h2>Intake ingediend!</h2>
+                <p>Bedankt voor het invullen van het formulier.</p>
+                <p class="text-muted">De informatiemanager zal uw aanvraag beoordelen en contact met u opnemen.</p>
+                <p class="mt-3"><strong>Referentie:</strong> ${currentForm.basisinfo?.onderwerp}</p>
+            </div>
+        </div>
+    `;
+};
+
+/**
+ * Neem intake in behandeling
+ */
+window.naarInBehandeling = async function() {
+    if (!currentForm) return;
+    currentForm.intakeStatus = INTAKE_STATUS.IN_BEHANDELING;
+    await saveForm();
+    renderForm(currentForm);
+    showToast('Intake in behandeling genomen', 'success');
+};
+
+/**
+ * Deel met stakeholders
+ */
+window.deelMetStakeholders = async function() {
+    if (!currentForm) return;
+
+    const selectedStakeholders = currentForm.stakeholders?.filter(s => s.geinformeerd) || [];
+    if (selectedStakeholders.length === 0) {
+        showToast('Selecteer eerst stakeholders', 'error');
+        return;
+    }
+
+    currentForm.intakeStatus = INTAKE_STATUS.WACHT_OP_STAKEHOLDERS;
+    await saveForm();
+
+    // Maak email links
+    const formName = currentForm.basisinfo?.onderwerp || 'Intake';
+    const emails = selectedStakeholders.map(s => s.email).join(';');
+    const subject = encodeURIComponent(`Review verzoek: ${formName}`);
+    const body = encodeURIComponent(`Beste collega,
+
+Graag vraag ik je om onderstaande intake te reviewen:
+
+Onderwerp: ${formName}
+Aanvrager: ${currentForm.basisinfo?.aanvrager || '-'}
+Doel: ${currentForm.basisinfo?.doel || '-'}
+
+Geef je feedback door te reageren op deze email.
+
+Met vriendelijke groet`);
+
+    window.location.href = `mailto:${emails}?subject=${subject}&body=${body}`;
+
+    renderForm(currentForm);
+    showToast('Email geopend voor stakeholders', 'success');
+};
+
+/**
+ * Maak intake definitief
+ */
+window.maakDefinitief = async function() {
+    if (!currentForm) return;
+    currentForm.intakeStatus = INTAKE_STATUS.DEFINITIEF;
+    await saveForm();
+    renderForm(currentForm);
+    showToast('Intake is nu definitief', 'success');
+};
+
+/**
+ * Laad klant intake view
+ */
+async function loadKlantIntake(formId, token) {
+    const form = await dataService.getForm(formId);
+    if (!form || form.klantToken !== token) {
+        showToast('Ongeldige of verlopen link', 'error');
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="container" style="padding-top: 3rem;">
+                <div class="card" style="text-align: center;">
+                    <h2>Link ongeldig</h2>
+                    <p>Deze link is niet geldig of is verlopen. Neem contact op met de informatiemanager.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Check of al ingediend
+    if (form.intakeStatus !== INTAKE_STATUS.WACHT_OP_KLANT) {
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="container" style="padding-top: 3rem;">
+                <div class="card" style="text-align: center;">
+                    <h2>Intake al ingediend</h2>
+                    <p>Dit formulier is al ingediend. Neem contact op met de informatiemanager voor wijzigingen.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    currentForm = form;
+    renderKlantIntakeView(form);
+    setupFormEvents();
+}
+
+/**
+ * Render klant intake view
+ */
+function renderKlantIntakeView(form) {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="form-container">
+            <div class="form-header">
+                <h1>Intake Formulier</h1>
+                <p class="text-muted">${form.basisinfo?.onderwerp || 'Nieuwe aanvraag'}</p>
+            </div>
+
+            <div id="form-content">
+                ${renderIntakeForm(form, true)}
+            </div>
+
+            <div class="form-actions-bar no-print">
+                <div class="actions-left"></div>
+                <div class="actions-right">
+                    <span class="save-status" id="save-status">Automatisch opgeslagen</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
+// WERKVOORRAAD DASHBOARD
+// ==========================================
+
+/**
+ * Render werkvoorraad dashboard
+ */
+async function renderWerkvoorraad() {
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier');
+
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="page-header">
+            <div class="container">
+                <h1>Werkvoorraad</h1>
+                <p>Overzicht van intakes per status</p>
+            </div>
+        </div>
+        <div class="container">
+            <div class="werkvoorraad-filters mb-3">
+                <label>Filter op IM:</label>
+                <select id="im-filter" class="form-select" style="width: auto; display: inline-block;" onchange="filterWerkvoorraad()">
+                    <option value="">Alle</option>
+                    ${INFORMATIEMANAGERS.map(im => `<option value="${im.id}">${im.naam}</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="werkvoorraad-grid" id="werkvoorraad-content">
+                ${renderWerkvoorraadContent(intakes, '')}
+            </div>
+        </div>
+    `;
+}
+
+function renderWerkvoorraadContent(intakes, filterIM) {
+    const filtered = filterIM
+        ? intakes.filter(f => f.informatiemanager === filterIM)
+        : intakes;
+
+    const statusGroups = {
+        [INTAKE_STATUS.KLANT_GEREED]: { title: 'Terug van klant', items: [], class: 'urgent' },
+        [INTAKE_STATUS.STAKEHOLDER_FEEDBACK]: { title: 'Feedback stakeholders', items: [], class: 'urgent' },
+        [INTAKE_STATUS.DRAFT]: { title: 'Concept', items: [], class: '' },
+        [INTAKE_STATUS.WACHT_OP_KLANT]: { title: 'Wacht op klant', items: [], class: 'waiting' },
+        [INTAKE_STATUS.IN_BEHANDELING]: { title: 'In behandeling', items: [], class: '' },
+        [INTAKE_STATUS.WACHT_OP_STAKEHOLDERS]: { title: 'Wacht op stakeholders', items: [], class: 'waiting' },
+        [INTAKE_STATUS.DEFINITIEF]: { title: 'Definitief', items: [], class: 'done' }
+    };
+
+    filtered.forEach(form => {
+        const status = form.intakeStatus || INTAKE_STATUS.DRAFT;
+        if (statusGroups[status]) {
+            statusGroups[status].items.push(form);
+        }
+    });
+
+    return Object.entries(statusGroups).map(([status, group]) => `
+        <div class="werkvoorraad-column ${group.class}">
+            <div class="column-header">
+                <h3>${group.title}</h3>
+                <span class="count">${group.items.length}</span>
+            </div>
+            <div class="column-items">
+                ${group.items.length === 0 ? '<p class="text-muted">Geen items</p>' : ''}
+                ${group.items.map(form => {
+                    const im = INFORMATIEMANAGERS.find(i => i.id === form.informatiemanager);
+                    return `
+                        <a href="#/form/intakeformulier/${form.id}" class="werkvoorraad-item">
+                            <div class="item-title">${escapeHtml(form.basisinfo?.onderwerp || 'Naamloos')}</div>
+                            <div class="item-meta">
+                                <span>${escapeHtml(form.basisinfo?.aanvrager || '-')}</span>
+                                ${im ? `<span class="im-badge">${im.naam}</span>` : ''}
+                            </div>
+                            <div class="item-date">${formatDate(form.updatedAt)}</div>
+                        </a>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+window.filterWerkvoorraad = async function() {
+    const filterIM = document.getElementById('im-filter').value;
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier');
+    document.getElementById('werkvoorraad-content').innerHTML = renderWerkvoorraadContent(intakes, filterIM);
+};
+
 // Register routes
 router
     .register('/', renderHome)
     .register('/formulieren', renderFormsList)
+    .register('/werkvoorraad', renderWerkvoorraad)
     .register('/new/:formType', (params) => createNewForm(params.formType))
     .register('/form/:formType/:formId', (params) => loadForm(params.formType, params.formId))
     .register('/intake-simple/:formId', (params) => loadSimpleIntake(params.formId))
+    .register('/klant-intake/:formId/:token', (params) => loadKlantIntake(params.formId, params.token))
     .register('*', () => router.navigate('/'));
 
 // Start app
