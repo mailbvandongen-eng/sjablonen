@@ -12,6 +12,7 @@ export class Intakeformulier extends FormBase {
 
         // Workflow velden
         this.informatiemanager = '';      // ID van toegewezen IM
+        this.businessAnalist = '';        // ID van toegewezen BA
         this.intakeStatus = INTAKE_STATUS.DRAFT;
         this.klantToken = '';             // Unieke token voor klant-link
         this.klantIngediendOp = null;     // Wanneer klant heeft ingediend

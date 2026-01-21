@@ -805,6 +805,35 @@ wl-attachments {
 }
 
 /* Werkvoorraad Dashboard */
+.werkvoorraad-tabs {
+    display: flex;
+    gap: var(--wl-spacing-sm);
+    border-bottom: 2px solid var(--wl-gray-200);
+    margin-bottom: var(--wl-spacing-md);
+}
+
+.werkvoorraad-tabs .tab-btn {
+    padding: var(--wl-spacing-sm) var(--wl-spacing-lg);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: var(--wl-font-size-base);
+    font-weight: 500;
+    color: var(--wl-gray-600);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.werkvoorraad-tabs .tab-btn:hover {
+    color: var(--wl-primary);
+}
+
+.werkvoorraad-tabs .tab-btn.active {
+    color: var(--wl-primary);
+    border-bottom-color: var(--wl-primary);
+}
+
 .werkvoorraad-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

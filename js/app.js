@@ -26,7 +26,7 @@ import { ICTProjectMandaat, ICT_PROJECT_SECTIES } from './models/ICTProjectManda
 import { Impactanalyse, IMPACT_SECTIES, RISICO_KANS_OPTIES, RISICO_IMPACT_OPTIES } from './models/Impactanalyse.js';
 
 // Import config
-import { INFORMATIEMANAGERS, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
+import { INFORMATIEMANAGERS, BUSINESS_ANALISTEN, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
 
 // Initialize services
 const dataService = new DataService(new LocalStorageAdapter());
@@ -417,6 +417,14 @@ function renderIntakeForm(form, isKlantView = false) {
                     <button class="btn btn-primary" onclick="deelMetStakeholders()">
                         Deel met stakeholders
                     </button>
+                    <button class="btn btn-secondary" onclick="openDoorzettenbBA()">
+                        Doorzetten naar BA
+                    </button>
+                </div>
+            ` : ''}
+            ${form.intakeStatus === INTAKE_STATUS.BIJ_BA ? `
+                <div class="alert alert-info mt-2">
+                    <strong>Doorgezet naar Business Analist:</strong> ${BUSINESS_ANALISTEN.find(b => b.id === form.businessAnalist)?.naam || 'Onbekend'}
                 </div>
             ` : ''}
             ${form.intakeStatus === INTAKE_STATUS.STAKEHOLDER_FEEDBACK ? `
@@ -2021,6 +2029,11 @@ window.deelMetKlant = function() {
         return;
     }
 
+    if (!currentForm.basisinfo?.onderwerp?.trim()) {
+        showToast('Vul eerst het onderwerp in voordat je kunt delen', 'error');
+        return;
+    }
+
     // Genereer unieke klant token
     currentForm.klantToken = generateToken();
     currentForm.intakeStatus = INTAKE_STATUS.WACHT_OP_KLANT;
@@ -2203,6 +2216,68 @@ window.naarInBehandeling = async function() {
 };
 
 /**
+ * Open modal om door te zetten naar BA
+ */
+window.openDoorzettenbBA = function() {
+    if (!currentForm) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.id = 'doorzetten-ba-modal';
+    modal.innerHTML = `
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Doorzetten naar Business Analist</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label class="form-label">Selecteer Business Analist</label>
+                    <select id="ba-select" class="form-select">
+                        <option value="">-- Selecteer BA --</option>
+                        ${BUSINESS_ANALISTEN.map(ba => `
+                            <option value="${ba.id}">${ba.naam}</option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Annuleren</button>
+                <button class="btn btn-primary" onclick="zetDoorNaarBA()">Doorzetten</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+/**
+ * Zet intake door naar geselecteerde BA
+ */
+window.zetDoorNaarBA = async function() {
+    const baId = document.getElementById('ba-select')?.value;
+    if (!baId) {
+        showToast('Selecteer eerst een Business Analist', 'error');
+        return;
+    }
+
+    if (!currentForm) return;
+
+    currentForm.businessAnalist = baId;
+    currentForm.intakeStatus = INTAKE_STATUS.BIJ_BA;
+    await saveForm();
+
+    document.getElementById('doorzetten-ba-modal')?.remove();
+
+    const ba = BUSINESS_ANALISTEN.find(b => b.id === baId);
+    showToast(`Intake doorgezet naar ${ba?.naam || 'BA'}`, 'success');
+    renderForm(currentForm);
+};
+
+/**
  * Deel met stakeholders
  */
 window.deelMetStakeholders = async function() {
@@ -2334,16 +2409,35 @@ async function renderWerkvoorraad() {
             </div>
         </div>
         <div class="container">
-            <div class="werkvoorraad-filters mb-3">
-                <label>Filter op IM:</label>
-                <select id="im-filter" class="form-select" style="width: auto; display: inline-block;" onchange="filterWerkvoorraad()">
-                    <option value="">Alle</option>
-                    ${INFORMATIEMANAGERS.map(im => `<option value="${im.id}">${im.naam}</option>`).join('')}
-                </select>
+            <div class="werkvoorraad-tabs mb-3">
+                <button class="tab-btn active" data-tab="im" onclick="switchWerkvoorraadTab('im')">Informatiemanagers</button>
+                <button class="tab-btn" data-tab="ba" onclick="switchWerkvoorraadTab('ba')">Business Analisten</button>
             </div>
 
-            <div class="werkvoorraad-grid" id="werkvoorraad-content">
-                ${renderWerkvoorraadContent(intakes, '')}
+            <div id="werkvoorraad-tab-im" class="werkvoorraad-tab-content">
+                <div class="werkvoorraad-filters mb-3">
+                    <label>Filter op IM:</label>
+                    <select id="im-filter" class="form-select" style="width: auto; display: inline-block;" onchange="filterWerkvoorraad()">
+                        <option value="">Selecteer...</option>
+                        ${INFORMATIEMANAGERS.map(im => `<option value="${im.id}">${im.naam}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="werkvoorraad-grid" id="werkvoorraad-content">
+                    ${renderWerkvoorraadContent(intakes, '', 'im')}
+                </div>
+            </div>
+
+            <div id="werkvoorraad-tab-ba" class="werkvoorraad-tab-content" style="display: none;">
+                <div class="werkvoorraad-filters mb-3">
+                    <label>Filter op BA:</label>
+                    <select id="ba-filter" class="form-select" style="width: auto; display: inline-block;" onchange="filterWerkvoorraadBA()">
+                        <option value="">Selecteer...</option>
+                        ${BUSINESS_ANALISTEN.map(ba => `<option value="${ba.id}">${ba.naam}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="werkvoorraad-grid" id="werkvoorraad-content-ba">
+                    ${renderWerkvoorraadContentBA(intakes, '')}
+                </div>
             </div>
         </div>
     `;
@@ -2420,6 +2514,90 @@ window.filterWerkvoorraad = async function() {
     const intakes = forms.filter(f => f.formType === 'intakeformulier');
     document.getElementById('werkvoorraad-content').innerHTML = renderWerkvoorraadContent(intakes, filterIM);
 };
+
+/**
+ * Switch werkvoorraad tab
+ */
+window.switchWerkvoorraadTab = function(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.werkvoorraad-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    // Show/hide content
+    document.getElementById('werkvoorraad-tab-im').style.display = tab === 'im' ? 'block' : 'none';
+    document.getElementById('werkvoorraad-tab-ba').style.display = tab === 'ba' ? 'block' : 'none';
+};
+
+/**
+ * Filter werkvoorraad BA
+ */
+window.filterWerkvoorraadBA = async function() {
+    const filterBA = document.getElementById('ba-filter').value;
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier');
+    document.getElementById('werkvoorraad-content-ba').innerHTML = renderWerkvoorraadContentBA(intakes, filterBA);
+};
+
+/**
+ * Render werkvoorraad content for Business Analisten
+ */
+function renderWerkvoorraadContentBA(intakes, filterBA) {
+    if (!filterBA) {
+        return `
+            <div class="werkvoorraad-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <p>Selecteer een business analist om de werkvoorraad te bekijken</p>
+            </div>
+        `;
+    }
+
+    // Filter intakes die bij deze BA zijn
+    const filtered = intakes.filter(f => f.businessAnalist === filterBA && f.intakeStatus === INTAKE_STATUS.BIJ_BA);
+
+    if (filtered.length === 0) {
+        return `
+            <div class="werkvoorraad-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    <path d="M12 12v6m0 0l-3-3m3 3l3-3"/>
+                </svg>
+                <p>Geen intakes in de werkvoorraad</p>
+            </div>
+        `;
+    }
+
+    const ba = BUSINESS_ANALISTEN.find(b => b.id === filterBA);
+
+    return `
+        <div class="werkvoorraad-column">
+            <div class="column-header">
+                <h3>Te behandelen</h3>
+                <span class="count">${filtered.length}</span>
+            </div>
+            <div class="column-items">
+                ${filtered.map(form => {
+                    const im = INFORMATIEMANAGERS.find(i => i.id === form.informatiemanager);
+                    return `
+                        <a href="#/form/intakeformulier/${form.id}" class="werkvoorraad-item">
+                            <div class="item-title">${escapeHtml(form.basisinfo?.onderwerp || 'Naamloos')}</div>
+                            <div class="item-meta">
+                                <span>${escapeHtml(form.basisinfo?.aanvrager || '-')}</span>
+                                ${im ? `<span class="im-badge">IM: ${im.naam}</span>` : ''}
+                            </div>
+                            <div class="item-date">${formatDate(form.updatedAt)}</div>
+                        </a>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
 
 /**
  * Render Rapportages page
