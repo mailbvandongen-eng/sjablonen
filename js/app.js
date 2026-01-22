@@ -8,6 +8,9 @@ import './components/wl-header.js';
 import './components/wl-form-section.js';
 import './components/wl-stakeholder-table.js';
 import './components/wl-comment-panel.js';
+import './components/wl-field-comment.js';
+import './components/wl-track-changes.js';
+import './components/wl-comment-sidebar.js';
 import './components/wl-checklist.js';
 import './components/wl-attachments.js';
 
@@ -20,13 +23,12 @@ import { LocalStorageAdapter } from './data/LocalStorageAdapter.js';
 import { FORM_TYPES, STATUS_LABELS, formatDate, showToast, downloadFile, readFileAsText, escapeHtml } from './utils/helpers.js';
 
 // Import models
-import { Intakeformulier, INTAKE_VRAGEN, PRIORITEIT_OPTIES } from './models/Intakeformulier.js';
-import { KleinProjectMandaat, KKV_SECTIES } from './models/KleinProjectMandaat.js';
+import { Intakeformulier, INTAKE_VRAGEN, INTAKE_SECTIES, PRIORITEIT_OPTIES, CLASSIFICATIE_OPTIES, BETROKKENHEID_OPTIES } from './models/Intakeformulier.js';
 import { ICTProjectMandaat, ICT_PROJECT_SECTIES } from './models/ICTProjectMandaat.js';
 import { Impactanalyse, IMPACT_SECTIES, RISICO_KANS_OPTIES, RISICO_IMPACT_OPTIES } from './models/Impactanalyse.js';
 
 // Import config
-import { INFORMATIEMANAGERS, BUSINESS_ANALISTEN, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, INTAKE_STATUS, INTAKE_STATUS_LABELS } from './config.js';
+import { INFORMATIEMANAGERS, BUSINESS_ANALISTEN, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, BETROKKENHEID_OPTIES as CONFIG_BETROKKENHEID, INTAKE_STATUS, INTAKE_STATUS_LABELS, FEEDBACK_PERMISSIONS, FEEDBACK_ROLES, COMMENT_STATUS, COMMENT_STATUS_LABELS } from './config.js';
 
 // Initialize services
 const dataService = new DataService(new LocalStorageAdapter());
@@ -245,9 +247,6 @@ function createNewForm(formType) {
         case 'intakeformulier':
             form = new Intakeformulier();
             break;
-        case 'klein-project-mandaat':
-            form = new KleinProjectMandaat();
-            break;
         case 'ict-projectmandaat':
             form = new ICTProjectMandaat();
             break;
@@ -353,8 +352,6 @@ function renderFormContent(form) {
     switch(form.formType) {
         case 'intakeformulier':
             return renderIntakeForm(form);
-        case 'klein-project-mandaat':
-            return renderKleinProjectMandaat(form);
         case 'ict-projectmandaat':
             return renderICTProjectMandaat(form);
         case 'impactanalyse':
@@ -369,12 +366,11 @@ function renderFormContent(form) {
  */
 function renderIntakeForm(form, isKlantView = false) {
     const statusInfo = INTAKE_STATUS_LABELS[form.intakeStatus] || INTAKE_STATUS_LABELS[INTAKE_STATUS.DRAFT];
-    const selectedIM = INFORMATIEMANAGERS.find(im => im.id === form.informatiemanager);
 
-    // Filter vragen op basis van view
-    const visibleVragen = isKlantView
-        ? INTAKE_VRAGEN.filter(v => v.klantZichtbaar)
-        : INTAKE_VRAGEN;
+    // Filter secties op basis van view
+    const visibleSecties = isKlantView
+        ? INTAKE_SECTIES.filter(s => s.klantZichtbaar)
+        : INTAKE_SECTIES;
 
     return `
         ${!isKlantView ? `
@@ -394,6 +390,30 @@ function renderIntakeForm(form, isKlantView = false) {
                     <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
                 </div>
             </div>
+            <div class="form-row mt-2">
+                <div class="form-field">
+                    <label>Classificatie</label>
+                    <p class="help-text">Bepaalt of dit een Project (IA nodig) of Change is</p>
+                    <div class="classificatie-buttons">
+                        ${CLASSIFICATIE_OPTIES.map(opt => `
+                            <button type="button"
+                                    class="classificatie-btn ${form.classificatie === opt.value ? 'selected' : ''} ${opt.type}"
+                                    onclick="setClassificatie('${opt.value}')">
+                                ${opt.label}
+                                <span class="classificatie-type">${opt.type === 'project' ? 'Project' : 'Change'}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            ${form.classificatie ? `
+                <div class="classificatie-info mt-2">
+                    ${CLASSIFICATIE_OPTIES.find(o => o.value === form.classificatie)?.iaNodig
+                        ? '<span class="badge badge-info">Impact Analyse nodig</span>'
+                        : '<span class="badge badge-warning">Geen Impact Analyse nodig → FB Backlog</span>'
+                    }
+                </div>
+            ` : ''}
             ${form.intakeStatus === INTAKE_STATUS.DRAFT && form.informatiemanager ? `
                 <div class="workflow-actions mt-2">
                     <button class="btn btn-primary" onclick="deelMetKlant()">
@@ -439,106 +459,71 @@ function renderIntakeForm(form, isKlantView = false) {
         </div>
         `}
 
-        <wl-form-section title="Basisinformatie" section-id="basisinfo">
-            <div class="form-row">
-                <div class="form-field">
-                    <label class="required">Onderwerp</label>
-                    <input type="text" class="form-input" data-path="basisinfo.onderwerp" value="${escapeHtml(form.basisinfo?.onderwerp || '')}">
-                </div>
-                ${!isKlantView ? `
-                <div class="form-field">
-                    <label>TP-nummer</label>
-                    <input type="text" class="form-input" data-path="basisinfo.thinkingPortfolioNummer" value="${escapeHtml(form.basisinfo?.thinkingPortfolioNummer || '')}" placeholder="Thinking Portfolio nummer">
-                </div>
-                ` : ''}
-            </div>
-            <div class="form-field">
-                <label>Korte omschrijving aanvraag</label>
-                <textarea class="form-textarea" data-path="basisinfo.korteOmschrijving">${escapeHtml(form.basisinfo?.korteOmschrijving || '')}</textarea>
-            </div>
-            <div class="form-field">
-                <label class="required">Doel van de aanvraag</label>
-                <p class="help-text">Wat wil je bereiken met deze aanvraag?</p>
-                <textarea class="form-textarea" data-path="basisinfo.doel">${escapeHtml(form.basisinfo?.doel || '')}</textarea>
-            </div>
-            <div class="form-row">
-                <div class="form-field">
-                    <label class="required">Aanvrager (voor- achternaam)</label>
-                    <input type="text" class="form-input" data-path="basisinfo.aanvrager" value="${escapeHtml(form.basisinfo?.aanvrager || '')}">
-                </div>
-                <div class="form-field">
-                    <label>Opdrachtgever (Teammanager)</label>
-                    <input type="text" class="form-input" data-path="basisinfo.opdrachtgever" value="${escapeHtml(form.basisinfo?.opdrachtgever || '')}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-field">
-                    <label>Domein / Team</label>
-                    <input type="text" class="form-input" data-path="basisinfo.domeinTeam" value="${escapeHtml(form.basisinfo?.domeinTeam || '')}">
-                </div>
-                <div class="form-field">
-                    <label>Datum van intake</label>
-                    <input type="date" class="form-input" data-path="basisinfo.datumIntake" value="${form.basisinfo?.datumIntake || ''}">
-                </div>
-            </div>
-        </wl-form-section>
-
-        <wl-form-section title="${isKlantView ? 'Uw aanvraag' : 'Vragenlijst'}" section-id="vragen">
-            ${visibleVragen.map(vraag => renderVraag(vraag, form.vragen, isKlantView)).join('')}
-        </wl-form-section>
+        ${visibleSecties.map(sectie => renderIntakeSectie(sectie, form, isKlantView)).join('')}
 
         ${!isKlantView ? `
-        <wl-form-section title="Stakeholders I-domein" section-id="stakeholders">
-            <p class="text-muted mb-2">Selecteer per rol de stakeholder voor review en akkoord.</p>
-            <div class="stakeholder-picklist-container">
-                ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
-                    <div class="stakeholder-picklist-row ${s.geinformeerd ? 'shared' : ''}">
-                        <div class="stakeholder-rol">
-                            ${escapeHtml(s.rol)}
-                            ${s.geinformeerd ? `
-                                <span class="shared-badge" title="Gedeeld">
-                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                </span>
+        <wl-form-section title="9. Stakeholders" section-id="stakeholders" class="numbered-section">
+            <p class="text-muted mb-2">Business & I-domein stakeholders met betrokkenheid.</p>
+            <div class="stakeholder-table-container">
+                <table class="stakeholder-table">
+                    <thead>
+                        <tr>
+                            <th>Rol</th>
+                            <th>Naam</th>
+                            <th>Betrokkenheid</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(form.stakeholders || STAKEHOLDERS_IDOMEIN).map((s, idx) => `
+                            <tr class="${s.geinformeerd ? 'shared' : ''}">
+                                <td class="stakeholder-rol">${escapeHtml(s.rol)}</td>
+                                <td>
+                                    ${s.rol === 'Opdrachtgever' || s.rol === 'Aanvrager' ? `
+                                        <input type="text" class="form-input form-input-sm"
+                                               placeholder="Naam"
+                                               value="${escapeHtml(s.naam || '')}"
+                                               onchange="updateStakeholderNaam(${idx}, this.value)">
+                                    ` : `
+                                        <select class="form-select form-select-sm" onchange="updateStakeholderPersoon(${idx}, this.value)">
+                                            <option value="">-- Selecteer --</option>
+                                            ${STAKEHOLDER_PERSONEN.map(p => `
+                                                <option value="${p.id}" ${s.persoonId === p.id ? 'selected' : ''}>${p.naam}</option>
+                                            `).join('')}
+                                        </select>
+                                    `}
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm" onchange="updateStakeholderBetrokkenheid(${idx}, this.value)">
+                                        ${BETROKKENHEID_OPTIES.map(opt => `
+                                            <option value="${opt}" ${s.betrokkenheid === opt ? 'selected' : ''}>${opt}</option>
+                                        `).join('')}
+                                    </select>
+                                </td>
+                                <td class="stakeholder-status-cell">
+                                    ${(s.persoonId || s.naam) ? `
+                                        <label class="checkbox-label-inline">
+                                            <input type="checkbox"
+                                                   ${s.geinformeerd ? 'checked' : ''}
+                                                   onchange="toggleStakeholder(${idx}, this.checked)">
+                                            <span class="checkmark-icon ${s.geinformeerd ? 'checked' : ''}"></span>
+                                        </label>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                            ${s.feedback ? `
+                            <tr class="feedback-row">
+                                <td colspan="4">
+                                    <div class="stakeholder-feedback">
+                                        <span class="feedback-date">${formatDate(s.feedbackDatum, true)}</span>
+                                        <span class="feedback-text">${escapeHtml(s.feedback)}</span>
+                                    </div>
+                                </td>
+                            </tr>
                             ` : ''}
-                        </div>
-                        ${s.rol === 'Opdrachtgever' ? `
-                            <div class="stakeholder-select">
-                                <input type="text" class="form-input"
-                                       placeholder="Naam opdrachtgever"
-                                       value="${escapeHtml(s.naam || '')}"
-                                       onchange="updateStakeholderNaam(${idx}, this.value)">
-                            </div>
-                            <div class="stakeholder-status"></div>
-                        ` : `
-                            <div class="stakeholder-select">
-                                <select class="form-select" onchange="updateStakeholderPersoon(${idx}, this.value)">
-                                    <option value="">-- Selecteer persoon --</option>
-                                    ${STAKEHOLDER_PERSONEN.map(p => `
-                                        <option value="${p.id}" ${s.persoonId === p.id ? 'selected' : ''}>${p.naam}</option>
-                                    `).join('')}
-                                </select>
-                            </div>
-                            <div class="stakeholder-status">
-                                ${s.persoonId ? `
-                                    <label class="checkbox-label">
-                                        <input type="checkbox"
-                                               ${s.geinformeerd ? 'checked' : ''}
-                                               onchange="toggleStakeholder(${idx}, this.checked)">
-                                        Geïnformeerd
-                                    </label>
-                                ` : ''}
-                            </div>
-                        `}
-                        ${s.feedback ? `
-                            <div class="stakeholder-feedback">
-                                <span class="feedback-date">${formatDate(s.feedbackDatum, true)}</span>
-                                <span class="feedback-text">${escapeHtml(s.feedback)}</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('')}
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         </wl-form-section>
         ` : ''}
@@ -546,6 +531,22 @@ function renderIntakeForm(form, isKlantView = false) {
         <wl-form-section title="Bijlagen" section-id="attachments">
             <wl-attachments id="form-attachments"></wl-attachments>
         </wl-form-section>
+
+        ${!isKlantView ? `
+        <wl-form-section title="12. Copilot Feed" section-id="copilot-feed" class="numbered-section">
+            <p class="text-muted mb-2">Machine-leesbare YAML voor Copilot integratie.</p>
+            <div class="copilot-feed-container">
+                <pre class="copilot-feed-preview" id="copilot-feed-content">${escapeHtml(generateCopilotFeed(form))}</pre>
+                <button class="btn btn-secondary btn-sm mt-2" onclick="copyCopilotFeed()">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                        <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                    </svg>
+                    Kopieer YAML
+                </button>
+            </div>
+        </wl-form-section>
+        ` : ''}
 
         ${isKlantView ? `
         <div class="klant-submit-section">
@@ -558,6 +559,101 @@ function renderIntakeForm(form, isKlantView = false) {
         </div>
         ` : ''}
     `;
+}
+
+/**
+ * Render een intake sectie
+ */
+function renderIntakeSectie(sectie, form, isKlantView) {
+    // Filter velden op basis van klantZichtbaar
+    const visibleVelden = isKlantView
+        ? sectie.velden.filter(v => v.klantZichtbaar !== false)
+        : sectie.velden;
+
+    if (visibleVelden.length === 0) return '';
+
+    return `
+        <wl-form-section title="${sectie.nummer}. ${sectie.titel}" section-id="${sectie.id}" class="numbered-section">
+            ${visibleVelden.map(veld => renderIntakeVeld(veld, form)).join('')}
+        </wl-form-section>
+    `;
+}
+
+/**
+ * Render een intake veld
+ */
+function renderIntakeVeld(veld, form) {
+    // Haal waarde op via path (bijv. "basisinfo.onderwerp")
+    const pathParts = veld.path.split('.');
+    let value = form;
+    for (const part of pathParts) {
+        value = value?.[part];
+    }
+    value = value ?? '';
+
+    let inputHtml = '';
+    switch(veld.type) {
+        case 'textarea':
+            inputHtml = `<textarea class="form-textarea rich-textarea" data-path="${veld.path}">${escapeHtml(value)}</textarea>`;
+            break;
+        case 'text':
+            inputHtml = `<input type="text" class="form-input" data-path="${veld.path}" value="${escapeHtml(value)}">`;
+            break;
+        case 'date':
+            inputHtml = `<input type="date" class="form-input" data-path="${veld.path}" value="${value}">`;
+            break;
+        case 'boolean':
+            inputHtml = `
+                <div class="boolean-toggle">
+                    <button type="button" class="boolean-btn ${value === true ? 'selected yes' : ''}" data-path="${veld.path}" data-value="true">Ja</button>
+                    <button type="button" class="boolean-btn ${value === false ? 'selected no' : ''}" data-path="${veld.path}" data-value="false">Nee</button>
+                </div>
+            `;
+            break;
+        default:
+            inputHtml = `<input type="text" class="form-input" data-path="${veld.path}" value="${escapeHtml(value)}">`;
+    }
+
+    return `
+        <div class="form-field">
+            <label ${veld.required ? 'class="required"' : ''}>${veld.label}</label>
+            ${veld.help ? `<p class="help-text">${veld.help}</p>` : ''}
+            ${inputHtml}
+        </div>
+    `;
+}
+
+/**
+ * Generate Copilot Feed YAML
+ */
+function generateCopilotFeed(form) {
+    return `intake_feed:
+  projectnaam: '${form.basisinfo?.onderwerp || ''}'
+  aanvrager: '${form.basisinfo?.aanvrager || ''}'
+  opdrachtgever: '${form.basisinfo?.opdrachtgever || ''}'
+  aanleiding: '${form.aanleiding?.aanleiding || form.vragen?.inleiding || ''}'
+  impact_niets_doen: '${form.aanleiding?.impactNietsDoen || form.vragen?.impactGeenRealisatie || ''}'
+  doel: '${form.doelUitkomst?.doel || form.basisinfo?.doel || ''}'
+  gewenste_situatie: '${form.doelUitkomst?.gewensteSituatie || form.vragen?.gewensteSituatie || ''}'
+  baten: ['${form.doelUitkomst?.baten || form.vragen?.baten || ''}']
+  scope:
+    binnen: ['${form.scope?.binnenScope || ''}']
+    buiten: ['${form.scope?.buitenScope || ''}']
+    aannames: ['${form.scope?.aannames || ''}']
+  processen: ['${form.werkprocessen?.geraakteProcessen || ''}']
+  informatie: ['${form.werkprocessen?.verwerktInformatie || form.vragen?.informatieverwerking || ''}']
+  eindgebruikers: ['${form.werkprocessen?.eindgebruikers || form.vragen?.teamsOfDoelgroepen || ''}']
+  wensen: ['${form.functioneleEisen?.wensen || ''}']
+  koppelingen: ['${form.functioneleEisen?.koppelingen || ''}']
+  rapportages: ['${form.functioneleEisen?.rapportages || ''}']
+  ai_toepassing: '${form.functioneleEisen?.aiComponent || form.vragen?.aiToepassing ? 'ja' : 'nee'}'
+  deadlines: ['${form.tijdslijnen?.deadlines || form.vragen?.deadline || ''}']
+  stakeholders: [${(form.stakeholders || []).filter(s => s.naam || s.persoonId).map(s => `'${s.rol}: ${s.naam || STAKEHOLDER_PERSONEN.find(p => p.id === s.persoonId)?.naam || ''}'`).join(', ')}]
+  kosten:
+    eenmalig_globaal: '${form.kosten?.eenmalig || ''}'
+    structureel_globaal: '${form.kosten?.structureel || ''}'
+    beschikbaar: '${form.kosten?.middelenBeschikbaar ? 'ja' : 'nee'}'
+  ia_kernvragen: ['${form.outputIA?.kernvragen || ''}']`;
 }
 
 /**
@@ -2021,6 +2117,59 @@ window.updateStakeholderNaam = function(idx, naam) {
 };
 
 /**
+ * Update stakeholder betrokkenheid
+ */
+window.updateStakeholderBetrokkenheid = function(idx, betrokkenheid) {
+    if (!currentForm || !currentForm.stakeholders) return;
+    currentForm.stakeholders[idx].betrokkenheid = betrokkenheid;
+    formModified = true;
+    triggerAutoSave();
+};
+
+/**
+ * Set intake classificatie
+ */
+window.setClassificatie = function(value) {
+    if (!currentForm) return;
+    currentForm.classificatie = value;
+    formModified = true;
+    triggerAutoSave();
+    renderForm(currentForm);
+
+    const classificatie = CLASSIFICATIE_OPTIES.find(o => o.value === value);
+    if (classificatie) {
+        if (classificatie.iaNodig) {
+            showToast(`Classificatie: ${classificatie.label} (Project - Impact Analyse nodig)`, 'info');
+        } else {
+            showToast(`Classificatie: ${classificatie.label} (Change - naar FB Backlog)`, 'warning');
+        }
+    }
+};
+
+/**
+ * Kopieer Copilot Feed YAML naar clipboard
+ */
+window.copyCopilotFeed = function() {
+    const feedContent = document.getElementById('copilot-feed-content');
+    if (!feedContent) return;
+
+    navigator.clipboard.writeText(feedContent.textContent).then(() => {
+        showToast('Copilot Feed gekopieerd naar clipboard', 'success');
+    }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = feedContent.textContent;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('Copilot Feed gekopieerd naar clipboard', 'success');
+    });
+};
+
+/**
  * Deel intake met klant
  */
 window.deelMetKlant = function() {
@@ -2712,11 +2861,192 @@ window.exportRapportageCSV = async function() {
     showToast('CSV geëxporteerd', 'success');
 };
 
+/**
+ * PMO Dashboard - Totaaloverzicht alle formulieren
+ */
+async function renderPMODashboard() {
+    const forms = await dataService.listForms();
+    const intakes = forms.filter(f => f.formType === 'intakeformulier' && !f.archived);
+    const impactanalyses = forms.filter(f => f.formType === 'impactanalyse' && !f.archived);
+    const mandaten = forms.filter(f => (f.formType === 'ict-projectmandaat' || f.formType === 'klein-projectmandaat') && !f.archived);
+
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="page-header">
+            <div class="container">
+                <h1>PMO Dashboard</h1>
+                <p>Totaaloverzicht van alle lopende zaken</p>
+            </div>
+        </div>
+        <div class="container">
+            <div class="dashboard-stats mb-4">
+                <div class="stat-card">
+                    <div class="stat-number">${intakes.length}</div>
+                    <div class="stat-label">Intakes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${impactanalyses.length}</div>
+                    <div class="stat-label">Impact Analyses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${mandaten.length}</div>
+                    <div class="stat-label">Project Mandaten</div>
+                </div>
+            </div>
+
+            <div class="dashboard-tabs mb-3">
+                <button class="tab-btn active" data-tab="intakes" onclick="switchPMOTab('intakes')">Intakes (${intakes.length})</button>
+                <button class="tab-btn" data-tab="ia" onclick="switchPMOTab('ia')">Impact Analyses (${impactanalyses.length})</button>
+                <button class="tab-btn" data-tab="mandaten" onclick="switchPMOTab('mandaten')">Mandaten (${mandaten.length})</button>
+            </div>
+
+            <div id="pmo-tab-intakes" class="pmo-tab-content">
+                ${renderPMOTable(intakes, 'intakeformulier')}
+            </div>
+
+            <div id="pmo-tab-ia" class="pmo-tab-content" style="display: none;">
+                ${renderPMOTable(impactanalyses, 'impactanalyse')}
+            </div>
+
+            <div id="pmo-tab-mandaten" class="pmo-tab-content" style="display: none;">
+                ${renderPMOTable(mandaten, 'mandaat')}
+            </div>
+        </div>
+    `;
+}
+
+function renderPMOTable(items, type) {
+    if (items.length === 0) {
+        return `
+            <div class="card empty-state">
+                <p class="text-muted">Geen items gevonden</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="card">
+            <div class="table-container">
+                <table class="pmo-table">
+                    <thead>
+                        <tr>
+                            <th>Naam</th>
+                            <th>Status</th>
+                            <th>Eigenaar</th>
+                            <th>Aanvrager</th>
+                            <th>Laatst gewijzigd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(form => {
+                            const im = INFORMATIEMANAGERS.find(i => i.id === form.informatiemanager);
+                            const ba = BUSINESS_ANALISTEN.find(b => b.id === form.businessAnalist);
+                            const status = getFormStatus(form);
+                            const formType = form.formType;
+                            return `
+                                <tr onclick="window.location.hash='/form/${formType}/${form.id}'" style="cursor: pointer;">
+                                    <td><strong>${escapeHtml(getFormTitle(form))}</strong></td>
+                                    <td><span class="badge ${status.class}">${status.label}</span></td>
+                                    <td>${im ? escapeHtml(im.naam) : (ba ? escapeHtml(ba.naam) : '-')}</td>
+                                    <td>${escapeHtml(form.basisinfo?.aanvrager || form.documentgegevens?.aanvrager || '-')}</td>
+                                    <td>${formatDate(form.updatedAt)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function getFormStatus(form) {
+    if (form.formType === 'intakeformulier') {
+        return INTAKE_STATUS_LABELS[form.intakeStatus] || { label: 'Onbekend', class: 'badge-draft' };
+    }
+    // Default status voor andere formulieren
+    return { label: form.status || 'Concept', class: 'badge-draft' };
+}
+
+window.switchPMOTab = function(tab) {
+    document.querySelectorAll('.dashboard-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.getElementById('pmo-tab-intakes').style.display = tab === 'intakes' ? 'block' : 'none';
+    document.getElementById('pmo-tab-ia').style.display = tab === 'ia' ? 'block' : 'none';
+    document.getElementById('pmo-tab-mandaten').style.display = tab === 'mandaten' ? 'block' : 'none';
+};
+
+/**
+ * Mijn Aanvragen - Business Dashboard (afgeschermd)
+ */
+async function renderMijnAanvragen() {
+    const forms = await dataService.listForms();
+    // In een echte implementatie zou je hier filteren op de ingelogde gebruiker
+    // Voor nu tonen we alle intakes die door "klant" zijn ingediend
+    const mijnIntakes = forms.filter(f =>
+        f.formType === 'intakeformulier' &&
+        !f.archived
+    );
+
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="page-header">
+            <div class="container">
+                <h1>Mijn Aanvragen</h1>
+                <p>Volg de status van uw ingediende aanvragen</p>
+            </div>
+        </div>
+        <div class="container">
+            ${mijnIntakes.length === 0 ? `
+                <div class="card empty-state">
+                    <div class="empty-state-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <h3 class="empty-state-title">Geen aanvragen</h3>
+                    <p>U heeft nog geen aanvragen ingediend.</p>
+                </div>
+            ` : `
+                <div class="aanvragen-grid">
+                    ${mijnIntakes.map(form => {
+                        const status = INTAKE_STATUS_LABELS[form.intakeStatus] || INTAKE_STATUS_LABELS[INTAKE_STATUS.DRAFT];
+                        return `
+                            <div class="aanvraag-card">
+                                <div class="aanvraag-header">
+                                    <h3>${escapeHtml(form.basisinfo?.onderwerp || 'Naamloos')}</h3>
+                                    <span class="badge ${status.class}">${status.label}</span>
+                                </div>
+                                <div class="aanvraag-body">
+                                    <div class="aanvraag-meta">
+                                        <span><strong>Aanvrager:</strong> ${escapeHtml(form.basisinfo?.aanvrager || '-')}</span>
+                                        <span><strong>Domein:</strong> ${escapeHtml(form.basisinfo?.domeinTeam || '-')}</span>
+                                        <span><strong>Ingediend:</strong> ${formatDate(form.createdAt)}</span>
+                                    </div>
+                                    ${form.basisinfo?.doel || form.doelUitkomst?.doel ? `
+                                        <p class="aanvraag-doel">${escapeHtml((form.basisinfo?.doel || form.doelUitkomst?.doel || '').substring(0, 150))}${(form.basisinfo?.doel || form.doelUitkomst?.doel || '').length > 150 ? '...' : ''}</p>
+                                    ` : ''}
+                                </div>
+                                <div class="aanvraag-footer">
+                                    <span class="text-muted">Laatst gewijzigd: ${formatDate(form.updatedAt)}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `}
+        </div>
+    `;
+}
+
 // Register routes
 router
     .register('/', renderHome)
     .register('/formulieren', renderFormsList)
     .register('/werkvoorraad', renderWerkvoorraad)
+    .register('/pmo-dashboard', renderPMODashboard)
+    .register('/mijn-aanvragen', renderMijnAanvragen)
     .register('/rapportages', renderRapportages)
     .register('/new/:formType', (params) => createNewForm(params.formType))
     .register('/form/:formType/:formId', (params) => loadForm(params.formType, params.formId))

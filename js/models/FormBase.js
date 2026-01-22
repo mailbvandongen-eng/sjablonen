@@ -1,5 +1,39 @@
 /**
  * FormBase - Basisklasse voor alle formuliermodellen
+ *
+ * Comment structuur:
+ * {
+ *   id: string,
+ *   type: 'section' | 'field' | 'inline',
+ *   sectionId: string,
+ *   fieldPath: string | null,
+ *   text: string,
+ *   status: 'open' | 'verwerkt' | 'afgewezen',
+ *   statusChangedAt: string | null,
+ *   statusChangedBy: string | null,
+ *   statusReason: string | null,
+ *   author: string,
+ *   authorRole: 'IM' | 'BA' | 'stakeholder' | 'klant',
+ *   createdAt: string,
+ *   updatedAt: string,
+ *   parentCommentId: string | null,
+ *   replies: Comment[]
+ * }
+ *
+ * TrackChange structuur:
+ * {
+ *   id: string,
+ *   fieldPath: string,
+ *   changeType: 'insert' | 'delete' | 'replace',
+ *   originalValue: string,
+ *   newValue: string,
+ *   status: 'pending' | 'accepted' | 'rejected',
+ *   author: string,
+ *   authorRole: string,
+ *   createdAt: string,
+ *   reviewedAt: string | null,
+ *   reviewedBy: string | null
+ * }
  */
 
 import { generateUUID } from '../utils/helpers.js';
@@ -16,6 +50,7 @@ export class FormBase {
         this.updatedAt = this.createdAt;
         this.createdBy = '';
         this.comments = [];
+        this.trackChanges = [];
     }
 
     /**

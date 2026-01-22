@@ -35,16 +35,24 @@ export const STAKEHOLDER_PERSONEN = [
     { id: 'psteevensz', naam: 'Pasqual Steevensz', email: 'pwcsteevensz@gemeentewestland.nl' }
 ];
 
-// Vaste Stakeholders I-domein
+// Stakeholder betrokkenheid opties
+export const BETROKKENHEID_OPTIES = [
+    'Akkoord',
+    'Adviseren',
+    'Informeren'
+];
+
+// Vaste Stakeholders I-domein (aangepast conform nieuwe template)
 export const STAKEHOLDERS_IDOMEIN = [
-    { rol: 'Opdrachtgever', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'Architectuur', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'ISO', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'InformatieBeheer', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'ITB', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'Strategische Informatiemanager', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'Business Analist', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' },
-    { rol: 'BICC (productowner)', persoonId: '', naam: '', email: '', geinformeerd: false, akkoord: null, feedback: '' }
+    { rol: 'Opdrachtgever', persoonId: '', naam: '', email: '', betrokkenheid: 'Akkoord', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Aanvrager', persoonId: '', naam: '', email: '', betrokkenheid: 'Informeren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Architectuur', persoonId: '', naam: '', email: '', betrokkenheid: 'Adviseren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'ISO/Privacy', persoonId: '', naam: '', email: '', betrokkenheid: 'Adviseren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'InformatieBeheer', persoonId: '', naam: '', email: '', betrokkenheid: 'Adviseren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Servicemanagement', persoonId: '', naam: '', email: '', betrokkenheid: 'Informeren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'Functioneel Beheer', persoonId: '', naam: '', email: '', betrokkenheid: 'Informeren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'ITB', persoonId: '', naam: '', email: '', betrokkenheid: 'Adviseren', geinformeerd: false, akkoord: null, feedback: '' },
+    { rol: 'BICC/Productowner', persoonId: '', naam: '', email: '', betrokkenheid: 'Informeren', geinformeerd: false, akkoord: null, feedback: '' }
 ];
 
 // Intake workflow statussen
@@ -82,12 +90,93 @@ export const IM_ONLY_VELDEN = {
     vragen: ['prioriteitCategorie', 'verkenningGedaan', 'impactGeenRealisatie', 'baten', 'informatieverwerking', 'beleidWijziging', 'kostenInschatting', 'aiToepassing']
 };
 
+// Feedback rollen
+export const FEEDBACK_ROLES = {
+    IM: 'informatiemanager',
+    BA: 'business_analist',
+    STAKEHOLDER: 'stakeholder',
+    KLANT: 'klant'
+};
+
+// Feedback permissies per rol
+export const FEEDBACK_PERMISSIONS = {
+    informatiemanager: {
+        canCreateComment: true,
+        canReply: true,
+        canResolve: true,
+        canReject: true,
+        canReopen: true,
+        canAcceptChanges: true,
+        canRejectChanges: true,
+        canMakeChanges: true,
+        canDeleteOwnComments: true,
+        canDeleteAllComments: true
+    },
+    business_analist: {
+        canCreateComment: true,
+        canReply: true,
+        canResolve: true,
+        canReject: true,
+        canReopen: true,
+        canAcceptChanges: true,
+        canRejectChanges: true,
+        canMakeChanges: true,
+        canDeleteOwnComments: true,
+        canDeleteAllComments: false
+    },
+    stakeholder: {
+        canCreateComment: true,
+        canReply: true,
+        canResolve: false,
+        canReject: false,
+        canReopen: false,
+        canAcceptChanges: false,
+        canRejectChanges: false,
+        canMakeChanges: false,
+        canDeleteOwnComments: true,
+        canDeleteAllComments: false
+    },
+    klant: {
+        canCreateComment: true,
+        canReply: true,
+        canResolve: false,
+        canReject: false,
+        canReopen: false,
+        canAcceptChanges: false,
+        canRejectChanges: false,
+        canMakeChanges: true,  // Kan eigen velden aanpassen
+        canDeleteOwnComments: true,
+        canDeleteAllComments: false
+    }
+};
+
+// Comment status opties
+export const COMMENT_STATUS = {
+    OPEN: 'open',
+    VERWERKT: 'verwerkt',
+    AFGEWEZEN: 'afgewezen'
+};
+
+export const COMMENT_STATUS_LABELS = {
+    [COMMENT_STATUS.OPEN]: { label: 'Open', class: 'status-open', icon: 'circle' },
+    [COMMENT_STATUS.VERWERKT]: { label: 'Verwerkt', class: 'status-resolved', icon: 'check' },
+    [COMMENT_STATUS.AFGEWEZEN]: { label: 'Afgewezen', class: 'status-rejected', icon: 'x' }
+};
+
+// Track change status
+export const TRACK_CHANGE_STATUS = {
+    PENDING: 'pending',
+    ACCEPTED: 'accepted',
+    REJECTED: 'rejected'
+};
+
 export default {
     INFORMATIEMANAGERS,
     BUSINESS_ANALISTEN,
     STAKEHOLDER_ROLLEN,
     STAKEHOLDER_PERSONEN,
     STAKEHOLDERS_IDOMEIN,
+    BETROKKENHEID_OPTIES,
     INTAKE_STATUS,
     INTAKE_STATUS_LABELS,
     KLANT_VELDEN,
