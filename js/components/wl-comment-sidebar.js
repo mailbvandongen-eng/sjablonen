@@ -162,7 +162,7 @@ class WLCommentSidebar extends HTMLElement {
 
     renderSidebarComment(comment) {
         const status = comment.status || 'open';
-        const statusInfo = COMMENT_STATUS_LABELS[status] || COMMENT_STATUS_LABELS.open;
+        const statusInfo = COMMENT_STATUS_LABELS[status] || COMMENT_STATUS_LABELS['open'];
         const isFieldComment = comment.type === 'field';
         const repliesCount = (comment.replies || []).length;
 

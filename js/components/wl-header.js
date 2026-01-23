@@ -22,8 +22,9 @@ class WLHeader extends HTMLElement {
                 <nav>
                     <a href="#/" data-route="/">Overzicht</a>
                     <a href="#/werkvoorraad" data-route="/werkvoorraad">Werkvoorraad</a>
+                    <a href="#/pmo-dashboard" data-route="/pmo-dashboard">PMO Dashboard</a>
+                    <a href="#/mijn-aanvragen" data-route="/mijn-aanvragen">Mijn Aanvragen</a>
                     <a href="#/rapportages" data-route="/rapportages">Rapportages</a>
-                    <a href="#/formulieren" data-route="/formulieren">Mijn Formulieren</a>
                 </nav>
                 <div class="header-menu">
                     <button class="menu-toggle" id="menu-toggle" aria-label="Menu">

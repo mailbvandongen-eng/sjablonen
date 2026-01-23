@@ -127,7 +127,7 @@ class WLFieldComment extends HTMLElement {
 
     renderComment(comment) {
         const status = comment.status || 'open';
-        const statusInfo = COMMENT_STATUS_LABELS[status] || COMMENT_STATUS_LABELS.open;
+        const statusInfo = COMMENT_STATUS_LABELS[status] || COMMENT_STATUS_LABELS['open'];
         const permissions = this.getPermissions();
         const isOwnComment = comment.author === this._currentUser.name;
 
