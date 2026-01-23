@@ -15,6 +15,7 @@ import './components/wl-checklist.js';
 import './components/wl-attachments.js';
 import './components/wl-workqueue.js';
 import './components/wl-notification-badge.js';
+import './components/wl-email-dropzone.js';
 
 // Import services
 import { Router, UrlHelpers } from './router.js';
@@ -81,6 +82,13 @@ function renderHome() {
             </div>
         </div>
         <div class="container">
+            <div class="email-import-section mb-4">
+                <h2>Intake vanuit email</h2>
+                <p class="text-muted mb-2">Sleep een email (.eml) om automatisch een intake aan te maken</p>
+                <wl-email-dropzone></wl-email-dropzone>
+            </div>
+
+            <h2 class="mb-2">Of kies een formuliertype</h2>
             <div class="card-grid">
                 ${Object.entries(FORM_TYPES).map(([key, type]) => `
                     <div class="card">
@@ -97,6 +105,8 @@ function renderHome() {
             </div>
         </div>
     `;
+
+    setupEmailDropzoneEvents();
 }
 
 /**
@@ -312,6 +322,56 @@ function createNewForm(formType) {
     dataService.createForm(form.toJSON()).then(savedForm => {
         router.navigate(`/form/${formType}/${savedForm.id}`);
     });
+}
+
+/**
+ * Setup email dropzone event handlers
+ */
+function setupEmailDropzoneEvents() {
+    const dropzone = document.querySelector('wl-email-dropzone');
+    if (!dropzone) return;
+
+    dropzone.addEventListener('email-parsed', async (e) => {
+        const { intakeData, parsed, filename } = e.detail;
+        await createIntakeFromEmail(intakeData, filename);
+    });
+
+    dropzone.addEventListener('email-error', (e) => {
+        showToast(e.detail.error, 'error');
+    });
+}
+
+/**
+ * Create intake from parsed email data
+ */
+async function createIntakeFromEmail(intakeData, filename) {
+    // Create new intake
+    const intake = new Intakeformulier();
+
+    // Fill with email data
+    intake.basisinfo.onderwerp = intakeData.onderwerp;
+    intake.basisinfo.aanvrager = intakeData.aanvrager;
+    intake.basisinfo.korteOmschrijving = intakeData.korteOmschrijving;
+
+    // Store original email info
+    intake.emailImport = {
+        filename: filename,
+        importedAt: new Date().toISOString(),
+        aanvragerEmail: intakeData.aanvragerEmail,
+        emailDatum: intakeData.emailDatum,
+        bijlagen: intakeData.emailBijlagen || []
+    };
+
+    // Set initial status
+    intake.intakeStatus = INTAKE_STATUS.DRAFT;
+
+    // Save
+    const savedForm = await dataService.createForm(intake.toJSON());
+
+    showToast(`Intake "${intakeData.onderwerp}" aangemaakt vanuit email`, 'success');
+
+    // Navigate to the new form
+    router.navigate(`/form/intakeformulier/${savedForm.id}`);
 }
 
 /**

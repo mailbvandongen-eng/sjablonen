@@ -3038,3 +3038,89 @@ wl-notification-badge {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ==========================================
+   EMAIL DROPZONE COMPONENT
+   ========================================== */
+
+wl-email-dropzone {
+    display: block;
+}
+
+.email-dropzone {
+    border: 2px dashed var(--wl-gray-300);
+    border-radius: var(--wl-border-radius-lg);
+    padding: var(--wl-spacing-xl);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--wl-gray-50);
+}
+
+.email-dropzone:hover {
+    border-color: var(--wl-primary);
+    background: var(--wl-primary-light);
+}
+
+.email-dropzone.dragging {
+    border-color: var(--wl-primary);
+    background: var(--wl-primary-light);
+    border-style: solid;
+    transform: scale(1.02);
+}
+
+.email-dropzone.processing {
+    cursor: wait;
+    opacity: 0.8;
+}
+
+.dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--wl-spacing-md);
+}
+
+.dropzone-icon {
+    color: var(--wl-gray-400);
+    transition: color 0.2s;
+}
+
+.email-dropzone:hover .dropzone-icon,
+.email-dropzone.dragging .dropzone-icon {
+    color: var(--wl-primary);
+}
+
+.dropzone-text {
+    margin: 0;
+    color: var(--wl-gray-700);
+}
+
+.dropzone-text strong {
+    color: var(--wl-gray-900);
+}
+
+.dropzone-processing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--wl-spacing-sm);
+}
+
+.dropzone-processing p {
+    margin: 0;
+    color: var(--wl-gray-600);
+}
+
+/* Email import section */
+.email-import-section {
+    background: var(--wl-white);
+    border-radius: var(--wl-border-radius-lg);
+    padding: var(--wl-spacing-lg);
+    box-shadow: var(--wl-shadow-sm);
+}
+
+.email-import-section h2 {
+    font-size: 1.1rem;
+    margin: 0 0 var(--wl-spacing-xs) 0;
+}
