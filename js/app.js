@@ -82,13 +82,9 @@ function renderHome() {
             </div>
         </div>
         <div class="container">
-            <div class="email-import-section mb-4">
-                <h2>Intake vanuit email</h2>
-                <p class="text-muted mb-2">Sleep een email (.eml) om automatisch een intake aan te maken</p>
+            <div class="email-import-section mb-3">
                 <wl-email-dropzone></wl-email-dropzone>
             </div>
-
-            <h2 class="mb-2">Of kies een formuliertype</h2>
             <div class="card-grid">
                 ${Object.entries(FORM_TYPES).map(([key, type]) => `
                     <div class="card">

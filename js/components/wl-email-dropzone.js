@@ -29,13 +29,12 @@ class WLEmailDropzone extends HTMLElement {
                         </div>
                     ` : `
                         <div class="dropzone-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                             </svg>
                         </div>
                         <p class="dropzone-text">
-                            <strong>Sleep een email (.eml) hierheen</strong><br>
-                            <span class="text-muted">of klik om een bestand te selecteren</span>
+                            <strong>Sleep .eml hierheen</strong> of klik om te selecteren
                         </p>
                         <input type="file" class="dropzone-input" accept=".eml,.msg" hidden>
                     `}

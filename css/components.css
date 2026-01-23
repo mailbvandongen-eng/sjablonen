@@ -3049,9 +3049,8 @@ wl-email-dropzone {
 
 .email-dropzone {
     border: 2px dashed var(--wl-gray-300);
-    border-radius: var(--wl-border-radius-lg);
-    padding: var(--wl-spacing-xl);
-    text-align: center;
+    border-radius: var(--wl-border-radius);
+    padding: var(--wl-spacing-md);
     cursor: pointer;
     transition: all 0.2s ease;
     background: var(--wl-gray-50);
@@ -3076,14 +3075,21 @@ wl-email-dropzone {
 
 .dropzone-content {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: center;
     gap: var(--wl-spacing-md);
 }
 
 .dropzone-icon {
     color: var(--wl-gray-400);
     transition: color 0.2s;
+    flex-shrink: 0;
+}
+
+.dropzone-icon svg {
+    width: 24px;
+    height: 24px;
 }
 
 .email-dropzone:hover .dropzone-icon,
@@ -3114,13 +3120,14 @@ wl-email-dropzone {
 
 /* Email import section */
 .email-import-section {
-    background: var(--wl-white);
-    border-radius: var(--wl-border-radius-lg);
-    padding: var(--wl-spacing-lg);
-    box-shadow: var(--wl-shadow-sm);
+    background: transparent;
+    padding: 0;
 }
 
 .email-import-section h2 {
-    font-size: 1.1rem;
-    margin: 0 0 var(--wl-spacing-xs) 0;
+    display: none;
+}
+
+.email-import-section p {
+    display: none;
 }
