@@ -2028,7 +2028,7 @@ window.submitSimpleIntake = async function() {
     if (!currentForm) return;
 
     // Basic validation
-    if (!currentForm.basisinfo?.aanvrager || !currentForm.basisinfo?.onderwerp || !currentForm.vragen?.doel) {
+    if (!currentForm.basisinfo?.aanvrager || !currentForm.basisinfo?.onderwerp || !currentForm.doelUitkomst?.doel) {
         showToast('Vul alle verplichte velden in (naam, onderwerp, doel)', 'error');
         return;
     }
@@ -2326,7 +2326,7 @@ window.klantIndienenIntake = async function() {
     if (!currentForm) return;
 
     // Validatie
-    if (!currentForm.basisinfo?.onderwerp || !currentForm.basisinfo?.aanvrager || !currentForm.basisinfo?.doel) {
+    if (!currentForm.basisinfo?.onderwerp || !currentForm.basisinfo?.aanvrager || !currentForm.doelUitkomst?.doel) {
         showToast('Vul alle verplichte velden in (onderwerp, aanvrager, doel)', 'error');
         return;
     }
@@ -2451,7 +2451,7 @@ Graag vraag ik je om onderstaande intake te reviewen:
 
 Onderwerp: ${formName}
 Aanvrager: ${currentForm.basisinfo?.aanvrager || '-'}
-Doel: ${currentForm.basisinfo?.doel || '-'}
+Doel: ${currentForm.doelUitkomst?.doel || '-'}
 
 Geef je feedback door te reageren op deze email.
 
