@@ -13,11 +13,15 @@ import './components/wl-track-changes.js';
 import './components/wl-comment-sidebar.js';
 import './components/wl-checklist.js';
 import './components/wl-attachments.js';
+import './components/wl-workqueue.js';
+import './components/wl-notification-badge.js';
 
 // Import services
 import { Router, UrlHelpers } from './router.js';
 import { DataService } from './data/DataService.js';
 import { LocalStorageAdapter } from './data/LocalStorageAdapter.js';
+import notificationService from './services/NotificationService.js';
+import { WorkqueueService } from './services/WorkqueueService.js';
 
 // Import utils
 import { FORM_TYPES, STATUS_LABELS, formatDate, showToast, downloadFile, readFileAsText, escapeHtml } from './utils/helpers.js';
@@ -28,16 +32,41 @@ import { ICTProjectMandaat, ICT_PROJECT_SECTIES } from './models/ICTProjectManda
 import { Impactanalyse, IMPACT_SECTIES, RISICO_KANS_OPTIES, RISICO_IMPACT_OPTIES } from './models/Impactanalyse.js';
 
 // Import config
-import { INFORMATIEMANAGERS, BUSINESS_ANALISTEN, STAKEHOLDER_PERSONEN, STAKEHOLDERS_IDOMEIN, BETROKKENHEID_OPTIES as CONFIG_BETROKKENHEID, INTAKE_STATUS, INTAKE_STATUS_LABELS, FEEDBACK_PERMISSIONS, FEEDBACK_ROLES, COMMENT_STATUS, COMMENT_STATUS_LABELS } from './config.js';
+import {
+    INFORMATIEMANAGERS,
+    BUSINESS_ANALISTEN,
+    FUNCTIONEEL_BEHEERDERS,
+    STAKEHOLDER_PERSONEN,
+    STAKEHOLDERS_IDOMEIN,
+    BETROKKENHEID_OPTIES as CONFIG_BETROKKENHEID,
+    INTAKE_STATUS,
+    INTAKE_STATUS_LABELS,
+    INTAKE_STATUS_TRANSITIONS,
+    USER_ROLES,
+    USER_ROLE_LABELS,
+    WORKQUEUE_CONFIG,
+    ROUTE_TYPES,
+    NOTIFICATION_TYPES,
+    FEEDBACK_PERMISSIONS,
+    FEEDBACK_ROLES,
+    COMMENT_STATUS,
+    COMMENT_STATUS_LABELS
+} from './config.js';
 
 // Initialize services
 const dataService = new DataService(new LocalStorageAdapter());
 const router = new Router();
+const workqueueService = new WorkqueueService(dataService);
 
 // App state
 let currentForm = null;
 let autoSaveTimer = null;
 let formModified = false;
+let currentUser = {
+    id: 'bvdongen',
+    name: 'Bob van Dongen',
+    role: USER_ROLES.IM
+};
 
 /**
  * Render home page
@@ -239,6 +268,27 @@ function getFormName(form) {
 }
 
 /**
+ * Bepaal of Classificatie sectie getoond moet worden
+ * Alleen tonen vanaf IM_ROUTERING (na stakeholder review)
+ */
+function shouldShowClassificatie(status) {
+    const showAtStatuses = [
+        INTAKE_STATUS.IM_ROUTERING,
+        INTAKE_STATUS.BIJ_BA,
+        INTAKE_STATUS.FB_BACKLOG,
+        INTAKE_STATUS.GEARCHIVEERD
+    ];
+    return showAtStatuses.includes(status);
+}
+
+/**
+ * Helper: get intake status (handles both intakeStatus and status fields)
+ */
+function getIntakeStatus(form) {
+    return form.intakeStatus || form.status || INTAKE_STATUS.DRAFT;
+}
+
+/**
  * Create new form
  */
 function createNewForm(formType) {
@@ -286,7 +336,13 @@ async function loadForm(formType, formId) {
  */
 function renderForm(form) {
     const typeInfo = FORM_TYPES[form.formType] || { label: form.formType };
+    const workflowStatus = getIntakeStatus(form);
+    const workflowStatusInfo = INTAKE_STATUS_LABELS[workflowStatus] || INTAKE_STATUS_LABELS[INTAKE_STATUS.DRAFT];
     const statusInfo = STATUS_LABELS[form.status] || STATUS_LABELS.draft;
+
+    // Get available actions for current user (use intakeStatus for compatibility)
+    const formWithStatus = { ...form, status: workflowStatus };
+    const availableActions = workqueueService.getAvailableActions(formWithStatus, currentUser.role);
 
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -298,12 +354,15 @@ function renderForm(form) {
                         <div class="form-meta">
                             <span>${typeInfo.label}</span>
                             <span>|</span>
-                            <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
+                            <span class="workflow-status-badge ${workflowStatusInfo.class}" title="${workflowStatusInfo.description || ''}">
+                                ${workflowStatusInfo.label}
+                            </span>
                             <span>|</span>
                             <span>Laatst opgeslagen: <span id="last-saved">${formatDate(form.updatedAt, true)}</span></span>
                         </div>
                     </div>
-                    <div class="d-flex gap-1">
+                    <div class="d-flex gap-1 align-center">
+                        <wl-notification-badge user-id="${currentUser.id}"></wl-notification-badge>
                         <button class="btn btn-primary" onclick="openAIAssistent()">
                             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"/>
@@ -311,15 +370,11 @@ function renderForm(form) {
                             </svg>
                             AI Assistent
                         </button>
-                        <button class="btn btn-secondary" onclick="shareForm()">
-                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
-                            </svg>
-                            Delen
-                        </button>
                     </div>
                 </div>
             </div>
+
+            ${renderStatusActionsBar(form, availableActions)}
 
             <div id="form-content">
                 ${renderFormContent(form)}
@@ -344,6 +399,174 @@ function renderForm(form) {
 
     setupFormEvents();
 }
+
+/**
+ * Render status actions bar based on current status and available transitions
+ */
+function renderStatusActionsBar(form, availableActions) {
+    if (!availableActions || availableActions.length === 0) {
+        return '';
+    }
+
+    const currentStatus = form.status || INTAKE_STATUS.DRAFT;
+    const statusInfo = INTAKE_STATUS_LABELS[currentStatus] || {};
+
+    return `
+        <div class="status-actions-bar no-print">
+            <div class="status-flow-indicator">
+                <span class="current-status">
+                    <span class="status-dot ${statusInfo.class}"></span>
+                    ${statusInfo.label}
+                </span>
+                <svg class="flow-arrow" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                <span class="next-actions">Volgende stap:</span>
+            </div>
+            <div class="status-action-buttons">
+                ${availableActions.map(action => `
+                    <button class="btn ${action.routeType ? 'btn-primary' : 'btn-secondary'}"
+                            onclick="executeStatusAction('${action.to}', '${action.routeType || ''}')"
+                            title="${INTAKE_STATUS_LABELS[action.to]?.description || ''}">
+                        ${getActionIcon(action.icon)}
+                        ${action.label}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get icon SVG for action
+ */
+function getActionIcon(iconName) {
+    const icons = {
+        'share': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/></svg>',
+        'send': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>',
+        'thumbs-up': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z"/></svg>',
+        'check': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+        'edit': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>',
+        'check-circle': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+        'arrow-right': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+        'list': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>',
+        'rotate-ccw': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>',
+        'archive': '<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>'
+    };
+    return icons[iconName] || icons['arrow-right'];
+}
+
+/**
+ * Execute status action
+ */
+window.executeStatusAction = async function(targetStatus, routeType) {
+    if (!currentForm) return;
+
+    // For routing decisions, show modal
+    if (targetStatus === INTAKE_STATUS.BIJ_BA || targetStatus === INTAKE_STATUS.FB_BACKLOG) {
+        showRoutingModal(targetStatus, routeType);
+        return;
+    }
+
+    try {
+        await workqueueService.transition(currentForm.id, targetStatus, currentUser);
+        currentForm = await dataService.getForm(currentForm.id);
+        renderForm(currentForm);
+
+        const statusInfo = INTAKE_STATUS_LABELS[targetStatus];
+        showToast(`Status gewijzigd naar: ${statusInfo?.label || targetStatus}`, 'success');
+    } catch (error) {
+        console.error('Status transitie fout:', error);
+        showToast(error.message || 'Fout bij status wijziging', 'error');
+    }
+};
+
+/**
+ * Show routing modal for project/change decision
+ */
+function showRoutingModal(targetStatus, routeType) {
+    const isProject = routeType === ROUTE_TYPES.PROJECT;
+    const assigneeList = isProject ? BUSINESS_ANALISTEN : FUNCTIONEEL_BEHEERDERS;
+    const assigneeLabel = isProject ? 'Business Analist' : 'Functioneel Beheerder';
+    const routeLabel = isProject ? 'Project' : 'Change';
+
+    const modal = document.createElement('div');
+    modal.id = 'routing-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Doorzetten als ${routeLabel}</h3>
+                <button class="modal-close" onclick="document.getElementById('routing-modal').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">
+                    ${isProject
+                        ? 'Deze intake wordt doorgezet naar een Business Analist voor verdere analyse.'
+                        : 'Deze change wordt op de backlog van Functioneel Beheer geplaatst.'}
+                </p>
+
+                <div class="form-group">
+                    <label for="assignee-select">Toewijzen aan ${assigneeLabel}:</label>
+                    <select id="assignee-select" class="form-select">
+                        <option value="">Selecteer...</option>
+                        ${assigneeList.map(person => `
+                            <option value="${person.id}">${person.naam}</option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label for="routing-notes">Toelichting (optioneel):</label>
+                    <textarea id="routing-notes" class="form-input" rows="3"
+                              placeholder="Eventuele opmerkingen voor de ${assigneeLabel.toLowerCase()}..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('routing-modal').remove()">Annuleren</button>
+                <button class="btn btn-primary" onclick="confirmRouting('${targetStatus}', '${routeType}')">
+                    ${isProject ? 'Doorzetten naar BA' : 'Plaatsen op backlog'}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+/**
+ * Confirm and execute routing
+ */
+window.confirmRouting = async function(targetStatus, routeType) {
+    const assigneeId = document.getElementById('assignee-select')?.value;
+    const notes = document.getElementById('routing-notes')?.value;
+
+    if (!assigneeId) {
+        showToast('Selecteer eerst een persoon om aan toe te wijzen', 'error');
+        return;
+    }
+
+    try {
+        await workqueueService.transition(currentForm.id, targetStatus, currentUser, {
+            routeType,
+            assignedTo: assigneeId,
+            reason: notes
+        });
+
+        document.getElementById('routing-modal')?.remove();
+
+        currentForm = await dataService.getForm(currentForm.id);
+        renderForm(currentForm);
+
+        const isProject = routeType === ROUTE_TYPES.PROJECT;
+        const assigneeList = isProject ? BUSINESS_ANALISTEN : FUNCTIONEEL_BEHEERDERS;
+        const assignee = assigneeList.find(p => p.id === assigneeId);
+
+        showToast(`Doorgezet naar ${assignee?.naam || 'toegewezen persoon'}`, 'success');
+    } catch (error) {
+        console.error('Routing fout:', error);
+        showToast(error.message || 'Fout bij doorzetten', 'error');
+    }
+};
 
 /**
  * Render form content based on type
@@ -390,6 +613,7 @@ function renderIntakeForm(form, isKlantView = false) {
                     <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
                 </div>
             </div>
+            ${shouldShowClassificatie(getIntakeStatus(form)) ? `
             <div class="form-row mt-2">
                 <div class="form-field">
                     <label>Classificatie</label>
@@ -414,42 +638,15 @@ function renderIntakeForm(form, isKlantView = false) {
                     }
                 </div>
             ` : ''}
-            ${form.intakeStatus === INTAKE_STATUS.DRAFT && form.informatiemanager ? `
-                <div class="workflow-actions mt-2">
-                    <button class="btn btn-primary" onclick="deelMetKlant()">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
-                        </svg>
-                        Deel met klant
-                    </button>
-                </div>
             ` : ''}
-            ${form.intakeStatus === INTAKE_STATUS.KLANT_GEREED ? `
+            ${getIntakeStatus(form) === INTAKE_STATUS.BIJ_BA && form.assignedTo ? `
                 <div class="alert alert-info mt-2">
-                    <strong>Klant heeft intake ingediend</strong> op ${form.klantIngediendOp ? formatDate(form.klantIngediendOp, true) : 'onbekend'}
-                </div>
-                <div class="workflow-actions mt-2">
-                    <button class="btn btn-primary" onclick="naarInBehandeling()">In behandeling nemen</button>
+                    <strong>Doorgezet naar Business Analist:</strong> ${BUSINESS_ANALISTEN.find(b => b.id === form.assignedTo)?.naam || 'Onbekend'}
                 </div>
             ` : ''}
-            ${form.intakeStatus === INTAKE_STATUS.IN_BEHANDELING ? `
-                <div class="workflow-actions mt-2">
-                    <button class="btn btn-primary" onclick="deelMetStakeholders()">
-                        Deel met stakeholders
-                    </button>
-                    <button class="btn btn-secondary" onclick="openDoorzettenbBA()">
-                        Doorzetten naar BA
-                    </button>
-                </div>
-            ` : ''}
-            ${form.intakeStatus === INTAKE_STATUS.BIJ_BA ? `
+            ${getIntakeStatus(form) === INTAKE_STATUS.FB_BACKLOG && form.assignedTo ? `
                 <div class="alert alert-info mt-2">
-                    <strong>Doorgezet naar Business Analist:</strong> ${BUSINESS_ANALISTEN.find(b => b.id === form.businessAnalist)?.naam || 'Onbekend'}
-                </div>
-            ` : ''}
-            ${form.intakeStatus === INTAKE_STATUS.STAKEHOLDER_FEEDBACK ? `
-                <div class="workflow-actions mt-2">
-                    <button class="btn btn-primary" onclick="maakDefinitief()">Maak definitief</button>
+                    <strong>Op backlog Functioneel Beheer:</strong> ${FUNCTIONEEL_BEHEERDERS.find(f => f.id === form.assignedTo)?.naam || 'Onbekend'}
                 </div>
             ` : ''}
         </wl-form-section>

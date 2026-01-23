@@ -55,27 +55,287 @@ export const STAKEHOLDERS_IDOMEIN = [
     { rol: 'BICC/Productowner', persoonId: '', naam: '', email: '', betrokkenheid: 'Informeren', geinformeerd: false, akkoord: null, feedback: '' }
 ];
 
-// Intake workflow statussen
+// Functioneel Beheerders
+export const FUNCTIONEEL_BEHEERDERS = [
+    { id: 'fbeheer1', naam: 'Functioneel Beheerder 1', email: 'fb1@gemeentewestland.nl' },
+    { id: 'fbeheer2', naam: 'Functioneel Beheerder 2', email: 'fb2@gemeentewestland.nl' }
+];
+
+// Gebruikersrollen in het systeem
+export const USER_ROLES = {
+    IM: 'informatiemanager',
+    BA: 'business_analist',
+    FB: 'functioneel_beheerder',
+    PMO: 'pmo',
+    KLANT: 'klant',
+    STAKEHOLDER: 'stakeholder'
+};
+
+export const USER_ROLE_LABELS = {
+    [USER_ROLES.IM]: { label: 'Informatiemanager', short: 'IM' },
+    [USER_ROLES.BA]: { label: 'Business Analist', short: 'BA' },
+    [USER_ROLES.FB]: { label: 'Functioneel Beheerder', short: 'FB' },
+    [USER_ROLES.PMO]: { label: 'PMO', short: 'PMO' },
+    [USER_ROLES.KLANT]: { label: 'Klant', short: 'Klant' },
+    [USER_ROLES.STAKEHOLDER]: { label: 'Stakeholder', short: 'SH' }
+};
+
+// Intake workflow statussen - VOLLEDIGE FLOW
 export const INTAKE_STATUS = {
-    DRAFT: 'draft',                      // Nieuwe intake, nog niet gedeeld
-    WACHT_OP_KLANT: 'wacht_op_klant',    // Gedeeld met klant, wacht op input
-    KLANT_GEREED: 'klant_gereed',        // Klant heeft ingevuld, terug bij IM
-    IN_BEHANDELING: 'in_behandeling',    // IM is bezig met aanvullen
-    BIJ_BA: 'bij_ba',                    // Doorgezet naar Business Analist
-    WACHT_OP_STAKEHOLDERS: 'wacht_op_stakeholders', // Gedeeld met stakeholders
-    STAKEHOLDER_FEEDBACK: 'stakeholder_feedback',   // Feedback ontvangen
-    DEFINITIEF: 'definitief'             // Afgerond, klaar voor PMO
+    // IM Fase - Aanmaak
+    DRAFT: 'draft',                          // Nieuwe intake, nog niet gedeeld
+
+    // Klant Fase - Invoer
+    KLANT_INVOER: 'klant_invoer',            // Gedeeld met klant voor invoer
+
+    // IM Fase - Aanvullen
+    IM_AANVULLEN: 'im_aanvullen',            // Terug bij IM, klant heeft ingevuld
+
+    // Klant Fase - Akkoord
+    KLANT_AKKOORD: 'klant_akkoord',          // Wacht op formeel akkoord klant
+
+    // Stakeholder Fase
+    STAKEHOLDER_REVIEW: 'stakeholder_review', // Bij stakeholders voor review
+
+    // IM Fase - Routering
+    IM_ROUTERING: 'im_routering',            // IM verwerkt feedback, bepaalt route
+
+    // Route: PROJECT
+    BIJ_BA: 'bij_ba',                        // In werkvoorraad Business Analist
+
+    // Route: CHANGE
+    FB_BACKLOG: 'fb_backlog',                // Op backlog Functioneel Beheer
+
+    // Eindstatus
+    GEARCHIVEERD: 'gearchiveerd'             // Afgerond, zichtbaar voor PMO
 };
 
 export const INTAKE_STATUS_LABELS = {
-    [INTAKE_STATUS.DRAFT]: { label: 'Concept', class: 'badge-draft', icon: 'edit' },
-    [INTAKE_STATUS.WACHT_OP_KLANT]: { label: 'Wacht op klant', class: 'badge-warning', icon: 'clock' },
-    [INTAKE_STATUS.KLANT_GEREED]: { label: 'Klant gereed', class: 'badge-info', icon: 'inbox' },
-    [INTAKE_STATUS.IN_BEHANDELING]: { label: 'In behandeling', class: 'badge-info', icon: 'edit' },
-    [INTAKE_STATUS.BIJ_BA]: { label: 'Bij Business Analist', class: 'badge-info', icon: 'user' },
-    [INTAKE_STATUS.WACHT_OP_STAKEHOLDERS]: { label: 'Wacht op stakeholders', class: 'badge-warning', icon: 'users' },
-    [INTAKE_STATUS.STAKEHOLDER_FEEDBACK]: { label: 'Feedback ontvangen', class: 'badge-info', icon: 'message' },
-    [INTAKE_STATUS.DEFINITIEF]: { label: 'Definitief', class: 'badge-approved', icon: 'check' }
+    [INTAKE_STATUS.DRAFT]: {
+        label: 'Concept',
+        class: 'badge-draft',
+        icon: 'edit',
+        description: 'Intake is nog in concept'
+    },
+    [INTAKE_STATUS.KLANT_INVOER]: {
+        label: 'Wacht op klant',
+        class: 'badge-warning',
+        icon: 'clock',
+        description: 'Klant vult gegevens in'
+    },
+    [INTAKE_STATUS.IM_AANVULLEN]: {
+        label: 'IM aanvullen',
+        class: 'badge-info',
+        icon: 'inbox',
+        description: 'Klant is gereed, IM vult aan'
+    },
+    [INTAKE_STATUS.KLANT_AKKOORD]: {
+        label: 'Wacht op akkoord',
+        class: 'badge-warning',
+        icon: 'thumbs-up',
+        description: 'Wacht op formeel akkoord klant'
+    },
+    [INTAKE_STATUS.STAKEHOLDER_REVIEW]: {
+        label: 'Stakeholder review',
+        class: 'badge-warning',
+        icon: 'users',
+        description: 'Stakeholders reviewen de intake'
+    },
+    [INTAKE_STATUS.IM_ROUTERING]: {
+        label: 'Routering',
+        class: 'badge-info',
+        icon: 'git-branch',
+        description: 'IM verwerkt feedback en bepaalt route'
+    },
+    [INTAKE_STATUS.BIJ_BA]: {
+        label: 'Bij BA',
+        class: 'badge-primary',
+        icon: 'user',
+        description: 'In werkvoorraad Business Analist'
+    },
+    [INTAKE_STATUS.FB_BACKLOG]: {
+        label: 'FB Backlog',
+        class: 'badge-primary',
+        icon: 'list',
+        description: 'Op backlog Functioneel Beheer'
+    },
+    [INTAKE_STATUS.GEARCHIVEERD]: {
+        label: 'Gearchiveerd',
+        class: 'badge-approved',
+        icon: 'archive',
+        description: 'Intake is afgerond en gearchiveerd'
+    }
+};
+
+// Status transities - welke overgangen zijn toegestaan?
+export const INTAKE_STATUS_TRANSITIONS = {
+    [INTAKE_STATUS.DRAFT]: {
+        next: [INTAKE_STATUS.KLANT_INVOER],
+        actions: [
+            { to: INTAKE_STATUS.KLANT_INVOER, label: 'Delen met klant', icon: 'share', role: USER_ROLES.IM }
+        ]
+    },
+    [INTAKE_STATUS.KLANT_INVOER]: {
+        next: [INTAKE_STATUS.IM_AANVULLEN],
+        actions: [
+            { to: INTAKE_STATUS.IM_AANVULLEN, label: 'Indienen', icon: 'send', role: USER_ROLES.KLANT }
+        ]
+    },
+    [INTAKE_STATUS.IM_AANVULLEN]: {
+        next: [INTAKE_STATUS.KLANT_AKKOORD],
+        actions: [
+            { to: INTAKE_STATUS.KLANT_AKKOORD, label: 'Vraag akkoord klant', icon: 'thumbs-up', role: USER_ROLES.IM }
+        ]
+    },
+    [INTAKE_STATUS.KLANT_AKKOORD]: {
+        next: [INTAKE_STATUS.STAKEHOLDER_REVIEW, INTAKE_STATUS.IM_AANVULLEN],
+        actions: [
+            { to: INTAKE_STATUS.STAKEHOLDER_REVIEW, label: 'Akkoord gegeven', icon: 'check', role: USER_ROLES.KLANT },
+            { to: INTAKE_STATUS.IM_AANVULLEN, label: 'Wijzigingen nodig', icon: 'edit', role: USER_ROLES.KLANT }
+        ]
+    },
+    [INTAKE_STATUS.STAKEHOLDER_REVIEW]: {
+        next: [INTAKE_STATUS.IM_ROUTERING],
+        actions: [
+            { to: INTAKE_STATUS.IM_ROUTERING, label: 'Review afronden', icon: 'check-circle', role: USER_ROLES.IM }
+        ]
+    },
+    [INTAKE_STATUS.IM_ROUTERING]: {
+        next: [INTAKE_STATUS.BIJ_BA, INTAKE_STATUS.FB_BACKLOG, INTAKE_STATUS.STAKEHOLDER_REVIEW],
+        actions: [
+            { to: INTAKE_STATUS.BIJ_BA, label: 'Doorzetten naar BA (Project)', icon: 'arrow-right', role: USER_ROLES.IM, routeType: 'project' },
+            { to: INTAKE_STATUS.FB_BACKLOG, label: 'Doorzetten naar FB (Change)', icon: 'list', role: USER_ROLES.IM, routeType: 'change' },
+            { to: INTAKE_STATUS.STAKEHOLDER_REVIEW, label: 'Terug naar stakeholders', icon: 'rotate-ccw', role: USER_ROLES.IM }
+        ]
+    },
+    [INTAKE_STATUS.BIJ_BA]: {
+        next: [INTAKE_STATUS.GEARCHIVEERD],
+        actions: [
+            // BA acties komen later (Impact Analyse flow)
+        ]
+    },
+    [INTAKE_STATUS.FB_BACKLOG]: {
+        next: [INTAKE_STATUS.GEARCHIVEERD],
+        actions: [
+            { to: INTAKE_STATUS.GEARCHIVEERD, label: 'Archiveren', icon: 'archive', role: USER_ROLES.IM }
+        ]
+    },
+    [INTAKE_STATUS.GEARCHIVEERD]: {
+        next: [],
+        actions: []
+    }
+};
+
+// Werkvoorraad configuratie per rol
+export const WORKQUEUE_CONFIG = {
+    [USER_ROLES.IM]: {
+        label: 'Mijn werkvoorraad',
+        statuses: [INTAKE_STATUS.IM_AANVULLEN, INTAKE_STATUS.IM_ROUTERING],
+        canSeeAll: true
+    },
+    [USER_ROLES.BA]: {
+        label: 'BA Werkvoorraad',
+        statuses: [INTAKE_STATUS.BIJ_BA],
+        canSeeAll: false
+    },
+    [USER_ROLES.FB]: {
+        label: 'FB Backlog',
+        statuses: [INTAKE_STATUS.FB_BACKLOG],
+        canSeeAll: false
+    },
+    [USER_ROLES.PMO]: {
+        label: 'PMO Overzicht',
+        statuses: [INTAKE_STATUS.GEARCHIVEERD],
+        canSeeAll: true
+    },
+    [USER_ROLES.KLANT]: {
+        label: 'Mijn intakes',
+        statuses: [INTAKE_STATUS.KLANT_INVOER, INTAKE_STATUS.KLANT_AKKOORD],
+        canSeeAll: false
+    }
+};
+
+// Notificatie types
+export const NOTIFICATION_TYPES = {
+    INTAKE_SHARED: 'intake_shared',
+    INTAKE_SUBMITTED: 'intake_submitted',
+    AKKOORD_REQUESTED: 'akkoord_requested',
+    AKKOORD_GIVEN: 'akkoord_given',
+    STAKEHOLDER_REVIEW_START: 'stakeholder_review_start',
+    COMMENT_ADDED: 'comment_added',
+    COMMENT_RESOLVED: 'comment_resolved',
+    ROUTED_TO_BA: 'routed_to_ba',
+    ROUTED_TO_FB: 'routed_to_fb',
+    INTAKE_ARCHIVED: 'intake_archived'
+};
+
+export const NOTIFICATION_LABELS = {
+    [NOTIFICATION_TYPES.INTAKE_SHARED]: {
+        title: 'Nieuwe intake gedeeld',
+        message: 'Er is een intake met je gedeeld voor invoer',
+        icon: 'share',
+        color: 'info'
+    },
+    [NOTIFICATION_TYPES.INTAKE_SUBMITTED]: {
+        title: 'Intake ingediend',
+        message: 'De klant heeft de intake ingediend',
+        icon: 'inbox',
+        color: 'success'
+    },
+    [NOTIFICATION_TYPES.AKKOORD_REQUESTED]: {
+        title: 'Akkoord gevraagd',
+        message: 'Je akkoord wordt gevraagd op een intake',
+        icon: 'thumbs-up',
+        color: 'warning'
+    },
+    [NOTIFICATION_TYPES.AKKOORD_GIVEN]: {
+        title: 'Akkoord gegeven',
+        message: 'De klant heeft akkoord gegeven',
+        icon: 'check',
+        color: 'success'
+    },
+    [NOTIFICATION_TYPES.STAKEHOLDER_REVIEW_START]: {
+        title: 'Review gestart',
+        message: 'Een intake is gedeeld voor stakeholder review',
+        icon: 'users',
+        color: 'info'
+    },
+    [NOTIFICATION_TYPES.COMMENT_ADDED]: {
+        title: 'Nieuwe opmerking',
+        message: 'Er is een opmerking geplaatst',
+        icon: 'message-circle',
+        color: 'info'
+    },
+    [NOTIFICATION_TYPES.COMMENT_RESOLVED]: {
+        title: 'Opmerking verwerkt',
+        message: 'Een opmerking is verwerkt',
+        icon: 'check-circle',
+        color: 'success'
+    },
+    [NOTIFICATION_TYPES.ROUTED_TO_BA]: {
+        title: 'Intake ontvangen',
+        message: 'Een nieuwe intake staat in je werkvoorraad',
+        icon: 'arrow-right',
+        color: 'primary'
+    },
+    [NOTIFICATION_TYPES.ROUTED_TO_FB]: {
+        title: 'Change ontvangen',
+        message: 'Een nieuwe change staat op de backlog',
+        icon: 'list',
+        color: 'primary'
+    },
+    [NOTIFICATION_TYPES.INTAKE_ARCHIVED]: {
+        title: 'Intake gearchiveerd',
+        message: 'Een intake is gearchiveerd',
+        icon: 'archive',
+        color: 'secondary'
+    }
+};
+
+// Route types voor routeringsbeslissing
+export const ROUTE_TYPES = {
+    PROJECT: 'project',
+    CHANGE: 'change'
 };
 
 // Velden zichtbaar voor klant
@@ -173,12 +433,25 @@ export const TRACK_CHANGE_STATUS = {
 export default {
     INFORMATIEMANAGERS,
     BUSINESS_ANALISTEN,
+    FUNCTIONEEL_BEHEERDERS,
     STAKEHOLDER_ROLLEN,
     STAKEHOLDER_PERSONEN,
     STAKEHOLDERS_IDOMEIN,
     BETROKKENHEID_OPTIES,
+    USER_ROLES,
+    USER_ROLE_LABELS,
     INTAKE_STATUS,
     INTAKE_STATUS_LABELS,
+    INTAKE_STATUS_TRANSITIONS,
+    WORKQUEUE_CONFIG,
+    NOTIFICATION_TYPES,
+    NOTIFICATION_LABELS,
+    ROUTE_TYPES,
     KLANT_VELDEN,
-    IM_ONLY_VELDEN
+    IM_ONLY_VELDEN,
+    FEEDBACK_ROLES,
+    FEEDBACK_PERMISSIONS,
+    COMMENT_STATUS,
+    COMMENT_STATUS_LABELS,
+    TRACK_CHANGE_STATUS
 };
